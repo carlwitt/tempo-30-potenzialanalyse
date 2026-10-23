@@ -12,10 +12,7 @@ from DataRetrieval.OSMDataCache import OSMDataCache
 
 class BuildingRetrieval:
     """
-    Generic OSM amenity retrieval via Overpass API.
-    Example:
-        amenities = ["school", "kindergarten"]
-        retriever = OSMBuildingRetrieval("educational_buildings", amenities, ["gymnasium", "realschule"])
+    Retrieve tagged OSM facilities and their geometry via Overpass.
     """
 
     OVERPASS_URL = "https://overpass-api.de/api/interpreter"
@@ -23,12 +20,14 @@ class BuildingRetrieval:
     def __init__(
         self,
         datatype: str,
-        tags: Dict[str, List[str]],   # 👈 instead of amenities
+        tags: Dict[str, List[str]],
         name_filter_regex: Optional[str] = None,
+        senior_assisted_living_only: bool = False,
         timeout: int = 60,
     ):
         self.tags = tags
         self.timeout = timeout
+        self.senior_assisted_living_only = senior_assisted_living_only
         self.name_filter_regex = (
             re.compile(name_filter_regex, re.IGNORECASE)
             if name_filter_regex
@@ -138,6 +137,16 @@ class BuildingRetrieval:
         for el in data["elements"]:
             tags = el.get("tags", {})
 
+            # Recursive Overpass results also contain geometry support nodes.
+            if not any(tags.get(key) in values for key, values in self.tags.items()):
+                continue
+
+            # Assisted living also covers non-senior groups; keep only explicit senior sites.
+            if self.senior_assisted_living_only and tags.get("social_facility") == "assisted_living":
+                groups = {group.strip() for group in re.split(r"[;,]", tags.get("social_facility:for", ""))}
+                if "senior" not in groups:
+                    continue
+
             # ---------------- Geometry ----------------
             if el["type"] == "node":
                 geom = Point(el["lon"], el["lat"])
@@ -166,10 +175,19 @@ class BuildingRetrieval:
             record = {
                 "osm_id": el["id"],
                 "element_type": el["type"],
+                "osm_node_ids": el.get("nodes", []),
+                "osm_url": f"https://www.openstreetmap.org/{el['type']}/{el['id']}",
                 "name": name,
+                "official_name": tags.get("official_name"),
+                "alt_name": tags.get("alt_name"),
+                "short_name": tags.get("short_name"),
+                "amenity": tags.get("amenity"),
+                "healthcare": tags.get("healthcare"),
+                "social_facility": tags.get("social_facility"),
+                "social_facility_for": tags.get("social_facility:for"),
                 "street": tags.get("addr:street"),
                 "housenumber": tags.get("addr:housenumber"),
-                "website": tags.get("contact:website"),
+                "website": tags.get("website") or tags.get("contact:website"),
                 "operator": tags.get("operator"),
                 "geometry": geom,
             }

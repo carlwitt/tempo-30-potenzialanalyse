@@ -104,6 +104,14 @@ class ZebraCrossingRetrieval:
         for el in data["elements"]:
             tags = el.get("tags", {})
 
+            # The recursive Overpass query also returns nodes used only to
+            # construct a crossing way. Keep a feature only if it satisfies
+            # one of the zebra predicates from the query itself.
+            if not any(tags.get(key) == "zebra" for key in (
+                "crossing", "crossing:markings", "crossing_ref"
+            )):
+                continue
+
             if el["type"] == "node":
                 geom = Point(el["lon"], el["lat"])
 

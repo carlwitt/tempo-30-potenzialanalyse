@@ -11,9 +11,10 @@ class SpecificBuildingRetrieval:
         # Loop through the configs
         for datatype, config in building_configs.items():
             retrieval = BuildingRetrieval(
-                datatype=datatype,
+                datatype=config.get("cache_datatype", datatype),
                 tags=config["tags"],
-                name_filter_regex=config.get("regex", None)
+                name_filter_regex=config.get("regex", None),
+                senior_assisted_living_only=config.get("senior_assisted_living_only", False),
             )
             
             gdf = retrieval.fetch(bbox)
