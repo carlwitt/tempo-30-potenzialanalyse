@@ -23,9 +23,7 @@ class ProximityPotential:
         if features_gdf is None or features_gdf.empty:
             return PotentialCalculationResult([], [])
 
-        # -----------------------------
-        # KEEP YOUR ORIGINAL LOGIC (unchanged)
-        # -----------------------------
+        # Only explicitly tagged 50/60 km/h roads without conditional T30 qualify.
         tempo50_or_60 = streets_gdf[
             streets_gdf["maxspeed_class"].isin({"50", "60"})
         ].copy()
@@ -73,8 +71,12 @@ class ProximityPotential:
         # -----------------------------
         street_ids = joined["osm_id"].drop_duplicates().tolist()
         feature_ids = joined["feature_id"].drop_duplicates().tolist()
+        source_street_pairs = list(
+            joined[["feature_id", "osm_id"]].drop_duplicates().itertuples(index=False, name=None)
+        )
 
         return PotentialCalculationResult(
             street_ids=street_ids,
-            opt_source_ids=feature_ids
+            opt_source_ids=feature_ids,
+            source_street_pairs=source_street_pairs,
         )
