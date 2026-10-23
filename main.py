@@ -4,9 +4,12 @@ import sys
 from DataRetrieval.SegmentRetrieval import SegmentRetrieval
 from DataRetrieval.ZebraCrossingRetrieval import ZebraCrossingRetrieval
 from DataRetrieval.SpecificBuildingRetrieval import SpecificBuildingRetrieval
+from DataRetrieval.BerlinDistrictRetrieval import BerlinDistrictRetrieval
+from DataRetrieval.MainEntranceRetrieval import MainEntranceRetrieval
 
 from PotentialCalculation.ZebraPotential import ZebraPotential
 from PotentialCalculation.ProximityPotential import ProximityPotential
+from PotentialCalculation.FacilityEligibility import FacilityEligibility
 from PotentialCalculation.GapPotential import Tempo50GapPotential
 from PotentialCalculation.PotentialCalculationResult import PotentialCalculationResult
 
@@ -41,22 +44,26 @@ streets_gdf = sr.fetch_as_geodataframe(used_bbox)
 
 zebra_retrieval = ZebraCrossingRetrieval(timeout=120)
 zebra_gdf = zebra_retrieval.fetch_zebra_crossings(used_bbox)
+districts_gdf = BerlinDistrictRetrieval().fetch_districts() if area_under_creation.lower() == "berlin" else None
+main_entrances_gdf = MainEntranceRetrieval().fetch_as_geodataframe(used_bbox)
 
 StreetPlot.plot_map(streets_gdf = streets_gdf, zebra_gdf = zebra_gdf)
 
 building_configs = {
     "educational_buildings": {
+        # OSM facility tags, not name keywords, determine eligibility (e.g. "Kita").
         "tags": {
             "amenity": ["school", "kindergarten"]
         },
-        "regex": r"(kindergarten|grundschule|hauptschule|realschule|mittelschule|gymnasium|gesamtschule|sonderpädagogisches|berufschul|berufoberschule|montessori|japanische|simmernschule)",
         "speed_annotation" : "T30_Potenzial_Schule"
     },
     "hospitals": {
         "tags": {
-            "amenity" :  ["hospital"]
+            "amenity": ["hospital"],
+            "healthcare": ["hospital"],
         },
-        "regex": r"(krankenhaus|klinikum)",
+        # The old cache only queried amenity=hospital.
+        "cache_datatype": "hospitals_with_healthcare",
         "speed_annotation" : "T30_Potenzial_Krankenhaus"
     },
     "elderly_homes": {
@@ -64,7 +71,7 @@ building_configs = {
             "amenity": ["nursing_home", "retirement_home", "care_home"],
             "social_facility": ["nursing_home", "assisted_living"]
         },
-        "regex": r"(pflegeheim|pflege-heim|senior|alten|residenz|stift)",
+        "senior_assisted_living_only": True,
         "speed_annotation" : "T30_Potenzial_Altenheim"
     },
     "playgrounds": {
@@ -93,6 +100,10 @@ building_configs = {
 }
 
 building_data = SpecificBuildingRetrieval.retrieve_building_data(bbox = used_bbox, building_configs = building_configs)
+if "disability_facilities" in building_data:
+    building_data["disability_facilities"] = FacilityEligibility.annotate_disability(
+        building_data["disability_facilities"]
+    )
 
 #######################################
 # Identify potential
@@ -107,7 +118,12 @@ potential_results["zebra"] = ZebraPotential.find_tempo50_segments_near_zebra(str
 
 for key in building_data.keys():
     print(f"Identifiying Street near {key}")
-    potential_results[key] = ProximityPotential.find_tempo50_segments_near_features(streets_gdf = streets_gdf, features_gdf = building_data[key], search_distance_m = 20)
+    eligible = building_data[key]
+    if key == "disability_facilities":
+        eligible = eligible.loc[eligible["facility_status"] == "confirmed_disabled"]
+    potential_results[key] = ProximityPotential.find_tempo50_segments_near_features(
+        streets_gdf=streets_gdf, features_gdf=eligible, search_distance_m=20
+    )
 
 print("Identifying Gaps ...")
 potential_results["gap"] = Tempo50GapPotential.find_all_tempo_50_gaps(gdf = streets_gdf)
@@ -142,7 +158,10 @@ streets_with_potential = streets_updated_gdf[
 PrintOutput.print_streets(streets_with_potential)
 
 GeoJsonCreator.create_geojson_layer_files(folder_name = area_under_creation, streets_with_potential = streets_with_potential,
-                                          streets_w_limit_gdf = streets_gdf, zebra_gdf = zebra_gdf, building_data = building_data)
+                                          streets_w_limit_gdf = streets_gdf, zebra_gdf = zebra_gdf, building_data = building_data,
+                                          districts_gdf = districts_gdf, gap_street_ids = potential_results["gap"].street_ids,
+                                          main_entrances_gdf = main_entrances_gdf,
+                                          potential_results = potential_results)
 
 
 # Plotting

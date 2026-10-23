@@ -54,11 +54,18 @@ class BoundingBoxStorage:
             52.515,
             13.166
         ),
+        "wedding": (
+            52.5356771,
+            13.3015376,
+            52.5644452,
+            13.3749244
+        ),
         "berlin": (
-            52.338,
-            13.088,
-            52.675,
-            13.761
+            # Covers every Berlin district boundary, with a small margin.
+            52.330,
+            13.080,
+            52.690,
+            13.770
         ),
     }
 
