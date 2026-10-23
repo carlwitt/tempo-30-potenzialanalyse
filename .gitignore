@@ -8,3 +8,6 @@ GEOJSON_EXPORT/
 
 # OSM cache folder
 overpass_cache/
+
+# Local comparison data; not part of the generated map or PR.
+reference-potentials/

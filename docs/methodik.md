@@ -1,0 +1,36 @@
+# Methodik und Prüfbarkeit der GeoJSON-Layer
+
+## Datenfluss
+
+`main.py` liest Straßen, Zebrastreifen, Einrichtungen und OSM-Haupteingänge aus Overpass bzw. dem lokalen Cache. Nur für Berlin werden zusätzlich Bezirksgrenzen (OSM-Relationen, `admin_level=9`) geladen. Die Potenzialberechnung ordnet OSM-Ways und Quellobjekte einander zu. `GeoJsonCreator` schreibt daraus die uMap-Layer. Die GeoJSON-Dateien sind berechnete Snapshots; Kommentare oder redaktionelle Änderungen in uMap fließen nicht zurück in diese Berechnung.
+
+Die Straßenlogik verwendet **explizit** als `maxspeed=50` oder `maxspeed=60` kartierte OSM-Ways. Fehlt `maxspeed`, wird nicht pauschal Tempo 50 angenommen. Für Einrichtungspotenziale und Lückenschluss werden Ways mit erkanntem `maxspeed:conditional=30` ausgeschlossen. Die Zebrastreifenberechnung prüft 15 m Abstand zu einem solchen Way; Einrichtungspotenziale prüfen 20 m. Diese Abstände sind Suchradien in einer metrischen Projektion, keine empfohlenen Abschnittslängen.
+
+## Einrichtungen und Überwege
+
+- Schulen und Kitas: `amenity=school|kindergarten`; kein Namens-Schlüsselwort nötig.
+- Krankenhäuser: `amenity=hospital` oder `healthcare=hospital`; der Name allein genügt nicht.
+- Senioren-Einrichtungen: die konfigurierten Pflegeheim-Tags; `social_facility=assisted_living` zählt nur bei explizitem `social_facility:for=senior`.
+- Behinderteneinrichtungen: nur Objekte mit `social_facility:for=disabled` werden als bestätigt berechnet. Andere oder fehlende Zielgruppen bleiben im separaten Review-Layer und zählen weder als bestätigtes Potenzial noch in die Bezirksquote.
+- Spielplätze: Potenzialberechnung auf den getaggten Quellobjekten; die Kartenansicht behält Polygone und nur potenzielle Punkteinträge. Die Statistik berücksichtigt nur Spielplätze bis 20 m an einer kartierten Straße. Sichtbare Features und statistische Grundgesamtheit sind deshalb nicht identisch.
+- Zebrastreifen: Stützpunkte rekursiv abgefragter OSM-Ways werden nicht als eigene Überwege interpretiert. Benachbarte, hinreichend parallele Teil-Ways werden zu einem Segment plus einem Mittelpunkt-Marker zusammengefasst. Überwege, die in OSM nur als Punkt erfasst sind, bleiben Marker ohne Segment. Jede Zusammenfassung ist heuristisch und sollte bei Zweifeln am OSM-Objekt geprüft werden.
+
+OSM-Namen, alternative/offizielle Namen, Betreiber und Typ-Tags werden in den Einrichtungs-Popups angezeigt, sofern sie erfasst sind. Der Link „OSM-Objekt prüfen“ führt zum Quellobjekt. Ein generischer Name wie „Soziale Schreibwerkstatt“ ist kein Nachweis für eine bestimmte Zielgruppe.
+
+## Konkrete Straßenabschnitte und Bildlinks
+
+`facility_street_segments.geojson` enthält pro Treffer den Teil des OSM-Straßenways innerhalb des 20-m-Puffers der Einrichtung. Felder wie `facility_layer`, `facility_id`, `street_osm_id`, `street_name`, `current_speed_kmh` und `distance_m` verbinden Abschnitt und Anlass. Ein langer OSM-Way wird nicht insgesamt als vorgeschlagener Abschnitt dargestellt. Die Popups von Einrichtung und Straße verlinken beide OSM-Objekte. Der Abschnitt ist eine geometrische Prüfkulisse, **keine** verkehrsrechtliche Empfehlung mit festgelegten Anfangs- und Endpunkten.
+
+Street-View- und Mapillary-Links verwenden bevorzugt einen explizit in OSM markierten Haupteingang am Objekt. Falls keiner vorhanden ist, wird bei Flächen ein Haupteingang im Areal angenähert oder ein repräsentativer Punkt verwendet; das Popup nennt den Referenztyp. Der Bildstandort wird anschließend auf den nächstgelegenen OSM-Way der Klasse 50/60 (`T50+` im Export) projiziert. Damit führt ein naher Campus- oder Fußweg nicht zum Bildstandort. Die Links garantieren weder vorhandene Bilder noch eine Sicht auf den Eingang. Mapillary beginnt standardmäßig am 1. Januar zwei Kalenderjahre vor dem Ausführungsjahr; ältere Bilder sind über den Link zunächst ausgefiltert.
+
+## Bezirksstatistik Berlin
+
+`district_stats.geojson` enthält ein Polygon pro Bezirk. Ein Quellobjekt wird über seinen repräsentativen Punkt genau einem Bezirk zugeordnet. Zebrastreifen zählen nur über ihre Marker, nicht zusätzlich über die Linien. Pro Typ gibt es `<typ>_total`, `<typ>_potential` und `<typ>_potential_pct`; die Typen sind `crossing`, `playgrounds`, `educational_buildings`, `hospitals`, `elderly_homes` und `disability_facilities`. Die zusätzlichen Felder `playgrounds`, `playground_potential` und `playground_potential_pct` sind Aliase für die Spielplatzwerte. `gap_potential` zählt Lückenschluss-Straßenways separat.
+
+`all_types_total` ist die Summe der Grundgesamtheiten **ohne** Lückenschluss. `all_types_potential` ist die Summe der offenen Kandidaten. `all_types_realized = all_types_total - all_types_potential`; `realized_potential_pct_total = 100 × all_types_realized / all_types_total`. „Realisiert“ bedeutet hier ausschließlich „unter diesen Regeln kein offenes Potenzial“, **nicht**, dass eine Tempo-30-Maßnahme umgesetzt wurde. Bei Grundgesamtheit null ist der Prozentwert `null`, nicht 0 %. Überlappende OSM-Objekte verschiedener Typen können mehrfach in die Gesamtsumme eingehen. Prozentwerte sind auf eine Nachkommastelle gerundet.
+
+Für eine uMap-Choroplethenkarte sollte das gewünschte Prozentfeld als numerische Eigenschaft und mit einer kontinuierlichen Skala eingerichtet sein. Die gespeicherten GeoJSON-Werte sind Zahlen; uMaps automatische Feldtyp-Erkennung bzw. ältere Layer-Konfigurationen können trotzdem eine manuelle Neukonfiguration des Remote-Layers erfordern.
+
+## Grenzen und Pflege
+
+Die Ergebnisse hängen von OSM-Tags, geometrischer Vollständigkeit und dem Stand des lokalen Overpass-Caches ab. Doppelt kartierte Einrichtungen, fehlende Eingänge oder abweichende reale Tempolimits können falsche Treffer bzw. Lücken verursachen. Eine Einrichtung in 20 m Nähe begründet für sich allein noch keine konkrete verkehrsrechtliche Anordnung. Prüfer:innen sollten Typ, tatsächlichen Zugang, Straßenseite, Geschwindigkeitsbeschilderung und den sinnvollen Abschnitt vor Ort oder anhand aktueller Bilder kontrollieren. Änderungen in OSM werden erst nach erneuter Abfrage und Export wirksam.
