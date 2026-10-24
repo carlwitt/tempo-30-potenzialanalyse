@@ -9,23 +9,33 @@ class OSMVerificationMetadata:
     def _facility_type(feature, category: str | None) -> str | None:
         amenity = feature.get("amenity")
         subtype = feature.get("social_facility")
+        healthcare = feature.get("healthcare")
         if category == "educational_buildings":
-            return {"kindergarten": "Kindertagesstätte", "school": "Schule"}.get(amenity, "Bildungseinrichtung")
+            return {"kindergarten": "Kindergarten", "school": "Schule"}.get(amenity, "Bildungseinrichtung")
         if category == "hospitals":
-            return "Krankenhaus (OSM-Kennzeichnung)"
+            return "Krankenhaus"
         if category == "elderly_homes":
             return {
                 "nursing_home": "Pflegeheim", "assisted_living": "Betreutes Wohnen für Senior:innen",
-            }.get(subtype, "Senioren- oder Pflegeeinrichtung (OSM-Kennzeichnung)")
+            }.get(subtype) or {
+                "nursing_home": "Pflegeheim", "retirement_home": "Altenheim",
+                "care_home": "Pflegeheim",
+            }.get(amenity, "Senioren- oder Pflegeeinrichtung")
         if category == "playgrounds":
             return "Spielplatz"
         if category == "disability_facilities":
             labels = {
                 "workshop": "Soziale Werkstatt", "outreach": "Beratungs-/Unterstützungsangebot",
                 "assisted_living": "Betreutes Wohnen", "nursing_home": "Pflegeeinrichtung",
-                "day_centre": "Tagesstätte",
+                "day_care": "Tagesstätte", "day_centre": "Tagesstätte",
+                "group_home": "Wohngruppe", "rehabilitation": "Rehabilitationseinrichtung",
             }
-            return labels.get(subtype, "Soziale Einrichtung; Untertyp in OSM nicht erfasst")
+            return labels.get(subtype) or {
+                "rehabilitation": "Rehabilitationseinrichtung",
+                "physiotherapy": "Physiotherapie",
+            }.get(healthcare) or {
+                "clinic": "Klinik", "craft": "Handwerksbetrieb",
+            }.get(amenity, "Soziale Einrichtung; Untertyp in OSM nicht erfasst")
         return None
 
     @staticmethod

@@ -7,6 +7,21 @@ from DataOutput.OSMVerificationMetadata import OSMVerificationMetadata
 
 
 class OSMVerificationMetadataTests(unittest.TestCase):
+    def test_each_facility_layer_gets_a_specific_popup_classification(self):
+        examples = [
+            ("educational_buildings", {"amenity": "kindergarten"}, "Kindergarten"),
+            ("educational_buildings", {"amenity": "school"}, "Schule"),
+            ("hospitals", {"amenity": "hospital"}, "Krankenhaus"),
+            ("elderly_homes", {"amenity": "retirement_home"}, "Altenheim"),
+            ("playgrounds", {"leisure": "playground"}, "Spielplatz"),
+            ("disability_facilities", {"social_facility": "workshop"}, "Soziale Werkstatt"),
+            ("disability_facilities", {"amenity": "craft"}, "Handwerksbetrieb"),
+            ("disability_facilities", {"healthcare": "physiotherapy"}, "Physiotherapie"),
+        ]
+        for category, tags, expected in examples:
+            with self.subTest(category=category, tags=tags):
+                self.assertEqual(OSMVerificationMetadata._facility_type(tags, category), expected)
+
     def test_adds_source_and_only_available_institution_names(self):
         features = gpd.GeoDataFrame(
             {

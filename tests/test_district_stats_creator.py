@@ -4,6 +4,7 @@ import geopandas as gpd
 from shapely.geometry import LineString, Point, box
 
 from DataOutput.DistrictStatsCreator import DistrictStatsCreator
+from PotentialCalculation.FacilityStreetRelevance import FacilityStreetRelevance
 
 
 class DistrictStatsCreatorTests(unittest.TestCase):
@@ -45,12 +46,14 @@ class DistrictStatsCreatorTests(unittest.TestCase):
             crs="EPSG:4326",
         )
         streets = gpd.GeoDataFrame(
+            {"highway": ["residential", "residential"]},
             geometry=[LineString([(0.5, 0.4), (0.5, 0.6)]), LineString([(1.3, 0.2), (1.3, 0.8)])],
             crs="EPSG:4326",
         )
+        playgrounds = FacilityStreetRelevance.filter_near_streets(playgrounds, streets)
 
         result = DistrictStatsCreator.create(
-            districts, crossings, streets, {"playgrounds": playgrounds}, gap_streets,
+            districts, crossings, {"playgrounds": playgrounds}, gap_streets,
             conditional_gap_street_ids={101},
         )
 
@@ -94,10 +97,12 @@ class DistrictStatsCreatorTests(unittest.TestCase):
             crs="EPSG:25832",
         )
         streets = gpd.GeoDataFrame(
+            {"highway": ["residential"]},
             geometry=[LineString([(0, -10), (0, 70)])], crs="EPSG:25832",
         )
+        playgrounds = FacilityStreetRelevance.filter_near_streets(playgrounds, streets)
 
-        result = DistrictStatsCreator.create(districts, crossings, streets, {"playgrounds": playgrounds})
+        result = DistrictStatsCreator.create(districts, crossings, {"playgrounds": playgrounds})
 
         self.assertEqual(result.playgrounds_total.iloc[0], 2)
         self.assertEqual(result.playgrounds_potential.iloc[0], 1)
@@ -116,10 +121,8 @@ class DistrictStatsCreatorTests(unittest.TestCase):
              "potential_candidate": [True, False]},
             geometry=[Point(0.2, 0.2), Point(0.4, 0.4)], crs="EPSG:4326",
         )
-        streets = gpd.GeoDataFrame(geometry=[], crs="EPSG:4326")
-
         result = DistrictStatsCreator.create(
-            districts, crossings, streets, {"disability_facilities": disability}
+            districts, crossings, {"disability_facilities": disability}
         )
 
         self.assertEqual(result.disability_facilities_total.iloc[0], 1)

@@ -36,6 +36,8 @@ class FacilityPopupCreator:
             title = name or kind or "Einrichtung ohne OSM-Namen"
             osm_url = FacilityPopupCreator._text(facility.get("osm_url"))
             parts = [f"[[{osm_url}|{title}]]" if osm_url else title]
+            if kind:
+                parts.append(f"Einrichtung: {kind}")
 
             # Only show available metadata, so unnamed or operator-less places
             # do not acquire empty labels in the public popup.
@@ -53,8 +55,6 @@ class FacilityPopupCreator:
             candidate = pd.notna(candidate_value) and bool(candidate_value)
             if candidate:
                 details = []
-                if kind:
-                    details.append(f"Einrichtungstyp laut OSM: {kind}")
                 reason = FacilityPopupCreator._text(facility.get("potential_reason"))
                 if reason:
                     details.append(reason)
@@ -97,7 +97,7 @@ class FacilityPopupCreator:
             if mapillary:
                 photos.append(f"[[{mapillary}|Mapillary]]")
             if photos:
-                parts.append("Fotos vor Ort: " + " ".join(photos))
+                parts.append("Fotos vor Ort\n" + "\n".join(photos))
 
             popups.append("\n\n".join(parts))
 

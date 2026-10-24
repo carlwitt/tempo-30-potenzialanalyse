@@ -10,6 +10,7 @@ from DataRetrieval.MainEntranceRetrieval import MainEntranceRetrieval
 from PotentialCalculation.ZebraPotential import ZebraPotential
 from PotentialCalculation.ProximityPotential import ProximityPotential
 from PotentialCalculation.FacilityEligibility import FacilityEligibility
+from PotentialCalculation.FacilityStreetRelevance import FacilityStreetRelevance
 from PotentialCalculation.GapPotential import Tempo50GapPotential
 from PotentialCalculation.PotentialCalculationResult import PotentialCalculationResult
 
@@ -101,6 +102,9 @@ building_configs = {
 }
 
 building_data = SpecificBuildingRetrieval.retrieve_building_data(bbox = used_bbox, building_configs = building_configs)
+for key, facilities in building_data.items():
+    building_data[key] = FacilityStreetRelevance.filter_near_streets(facilities, streets_gdf)
+    print(f"Traffic-adjacent {key}: {len(building_data[key])}/{len(facilities)}")
 if "disability_facilities" in building_data:
     building_data["disability_facilities"] = FacilityEligibility.annotate_disability(
         building_data["disability_facilities"]

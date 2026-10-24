@@ -2,6 +2,7 @@ from typing import List
 import geopandas as gpd
 
 from PotentialCalculation.PotentialCalculationResult import PotentialCalculationResult
+from PotentialCalculation.FacilityStreetRelevance import FacilityStreetRelevance
 
 
 class ProximityPotential:
@@ -24,8 +25,9 @@ class ProximityPotential:
             return PotentialCalculationResult([], [])
 
         # Only explicitly tagged 50/60 km/h roads without conditional T30 qualify.
-        tempo50_or_60 = streets_gdf[
-            streets_gdf["maxspeed_class"].isin({"50", "60"})
+        tempo50_or_60 = FacilityStreetRelevance.traffic_streets(streets_gdf)
+        tempo50_or_60 = tempo50_or_60[
+            tempo50_or_60["maxspeed_class"].isin({"50", "60"})
         ].copy()
 
         # Filter out streets with conditional tempo 30

@@ -155,8 +155,7 @@ class GeoJsonCreator:
                 streets_w_limit_gdf["osm_id"].isin(gap_street_ids or [])
             ]
             export_data_dict["district_stats"] = DistrictStatsCreator.create(
-                districts_gdf, export_data_dict["zebra"], streets_w_limit_gdf,
-                building_data, gap_streets,
+                districts_gdf, export_data_dict["zebra"], building_data, gap_streets,
                 conditional_gap_street_ids=set(
                     (gap_result.conditional_gap_dependencies or {}) if gap_result else {}
                 ),

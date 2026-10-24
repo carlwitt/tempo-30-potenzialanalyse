@@ -14,11 +14,14 @@ class FacilityStreetSegmentsTests(unittest.TestCase):
             {"osm_id": [1, 2]}, geometry=[Point(10, 5), Point(40, 5)], crs="EPSG:25832",
         )
         streets = gpd.GeoDataFrame(
-            {"osm_id": [10, 20, 30], "maxspeed_class": ["50", "60", "50"],
-             "conditional_speed": [None, None, "30"]},
+            {"osm_id": [10, 20, 30, 40],
+             "highway": ["residential", "residential", "residential", "service"],
+             "maxspeed_class": ["50", "60", "50", "50"],
+             "conditional_speed": [None, None, "30", None]},
             geometry=[LineString([(0, 0), (20, 0)]),
                       LineString([(30, 0), (50, 0)]),
-                      LineString([(0, 4), (20, 4)])],
+                      LineString([(0, 4), (20, 4)]),
+                      LineString([(30, 4), (50, 4)])],
             crs="EPSG:25832",
         )
 

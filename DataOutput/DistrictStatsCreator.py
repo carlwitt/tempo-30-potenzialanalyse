@@ -8,10 +8,10 @@ class DistrictStatsCreator:
     """Count source features by district; percentages are potential / total.
 
     A feature belongs to the district containing its representative point.
-    Facility counts use the tagged source features, including playground points
-    that the presentation layer later hides. Playgrounds count only when their
-    geometry is within 20 m of a mapped road. "Realized" means no open potential
-    under the current pipeline rules. A zero total has no percentage.
+    Facility counts use the traffic-adjacent source features supplied by the
+    pipeline, including playground points that the presentation layer later
+    hides. "Realized" means no open potential under the current pipeline rules.
+    A zero total has no percentage.
     """
 
     FACILITY_LAYERS = (
@@ -21,22 +21,6 @@ class DistrictStatsCreator:
         "hospitals",
         "playgrounds",
     )
-
-    PLAYGROUND_STREET_DISTANCE_M = 20
-
-    @staticmethod
-    def _playgrounds_near_streets(
-        playgrounds: gpd.GeoDataFrame | None, streets: gpd.GeoDataFrame
-    ) -> gpd.GeoDataFrame | None:
-        if playgrounds is None or playgrounds.empty or streets.empty:
-            return playgrounds.iloc[0:0] if playgrounds is not None else None
-
-        metric_crs = "EPSG:25832"
-        buffered = playgrounds.to_crs(metric_crs).reset_index(drop=True)
-        buffered["geometry"] = buffered.geometry.buffer(DistrictStatsCreator.PLAYGROUND_STREET_DISTANCE_M)
-        roads = streets.to_crs(metric_crs)[["geometry"]]
-        nearby_indices = gpd.sjoin(buffered[["geometry"]], roads, predicate="intersects").index.unique()
-        return playgrounds.iloc[nearby_indices]
 
     @staticmethod
     def _assigned_features(districts: gpd.GeoDataFrame, features: gpd.GeoDataFrame | None):
@@ -65,7 +49,6 @@ class DistrictStatsCreator:
     def create(
         districts: gpd.GeoDataFrame,
         crossings: gpd.GeoDataFrame,
-        streets: gpd.GeoDataFrame,
         facilities: dict[str, gpd.GeoDataFrame] | None = None,
         gap_streets: gpd.GeoDataFrame | None = None,
         conditional_gap_street_ids: set[int] | None = None,
@@ -80,8 +63,6 @@ class DistrictStatsCreator:
             layers["disability_facilities"] = disability.loc[
                 disability["facility_status"] == "confirmed_disabled"
             ]
-        layers["playgrounds"] = DistrictStatsCreator._playgrounds_near_streets(layers["playgrounds"], streets)
-
         for name, features in layers.items():
             counts = DistrictStatsCreator._counts(result, features)
             result[f"{name}_total"] = [counts[index][0] for index in result.index]
