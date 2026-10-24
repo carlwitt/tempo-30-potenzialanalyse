@@ -5,6 +5,7 @@ from pathlib import Path
 
 import geopandas as gpd
 
+from DataOutput.AdjacentCoveredSegments import AdjacentCoveredSegments
 from DataOutput.DistrictStatsCreator import DistrictStatsCreator
 from DataOutput.FacilityStreetSegments import FacilityStreetSegments
 from DataOutput.OSMVerificationMetadata import OSMVerificationMetadata
@@ -34,6 +35,9 @@ class GeoJsonCreator:
         export_data_dict["facility_street_segments"] = FacilityStreetSegments.create(
             streets_w_limit_gdf, building_data, potential_results or {}
         )
+        export_data_dict["facility_covered_street_segments"] = AdjacentCoveredSegments.create(
+            streets_w_limit_gdf, building_data, potential_results or {}
+        )
 
         export_data_dict["potential_streets"]["feature_type"] = \
             export_data_dict["potential_streets"]["feature_type"].map({
@@ -48,6 +52,9 @@ class GeoJsonCreator:
             })
         export_data_dict["potential_streets"] = FacilityStreetSegments.annotate_potential_streets(
             export_data_dict["potential_streets"], export_data_dict["facility_street_segments"]
+        )
+        export_data_dict["potential_streets"] = AdjacentCoveredSegments.annotate_potential_streets(
+            export_data_dict["potential_streets"], export_data_dict["facility_covered_street_segments"]
         )
 
         # Bundle speed limits
@@ -147,6 +154,9 @@ class GeoJsonCreator:
             )
             export_data_dict[building_type] = FacilityStreetSegments.annotate_facilities(
                 export_data_dict[building_type], export_data_dict["facility_street_segments"], building_type
+            )
+            export_data_dict[building_type] = AdjacentCoveredSegments.annotate_facilities(
+                export_data_dict[building_type], export_data_dict["facility_covered_street_segments"], building_type
             )
             export_data_dict[building_type] = StreetImageryLinkCreator.add_links(
                 export_data_dict[building_type], export_data_dict["streets_and_limit"],
