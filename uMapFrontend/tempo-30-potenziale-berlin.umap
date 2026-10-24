@@ -1,0 +1,989 @@
+{
+  "type": "umap",
+  "geometry": {
+    "type": "Point",
+    "coordinates": [
+      13.287963867187502,
+      52.45810145008196
+    ]
+  },
+  "properties": {
+    "ttl": {
+      "300": "5 min",
+      "3600": "1 hour",
+      "86400": "1 day"
+    },
+    "name": "Tempo 30 Potenziale Berlin",
+    "tags": [
+      "public"
+    ],
+    "zoom": 11,
+    "center": [
+      13.287963867187502,
+      52.45810145008196
+    ],
+    "fields": [],
+    "licence": {
+      "url": "http://opendatacommons.org/licenses/odbl/",
+      "name": "ODbL"
+    },
+    "overlay": {},
+    "slideshow": {},
+    "tilelayer": {
+      "tms": false,
+      "name": "Positron (Carto)",
+      "maxZoom": 17,
+      "minZoom": 0,
+      "attribution": "&copy; [[http://www.openstreetmap.org/copyright|OpenStreetMap]] contributors, &copy; [[https://carto.com/attributions|CARTO]]",
+      "url_template": "https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png?key=cb1_2ipg_1_a64e4bfb259752dcd3dc012c"
+    },
+    "longCredit": "Daten: [[https://www.openstreetmap.org/copyright|OpenStreetMap-Mitwirkende]] (ODbL). Analyse und Methodik: [[https://github.com/MunichWays/tempo-30-potenzialanalyse|Tempo-30-Potenzialanalyse]].",
+    "limitBounds": {},
+    "syncEnabled": true,
+    "zoomControl": true,
+    "fullscreenControl": true
+  },
+  "uri": "http://umap.openstreetmap.de/de/map/tempo-30-potenziale-berlin_164527",
+  "layers": [
+    {
+      "layers": [
+        {
+          "type": "FeatureCollection",
+          "features": [],
+          "properties": {
+            "fill": true,
+            "heat": {},
+            "name": "Spielplätze",
+            "type": "Default",
+            "color": "White",
+            "rules": [
+              {
+                "name": "Spielplatz an Tempo-50-Straßenabschnitt",
+                "condition": "potential_candidate=true",
+                "properties": {
+                  "color": "Red",
+                  "opacity": 0.7,
+                  "fillOpacity": 0.7
+                }
+              }
+            ],
+            "fields": [
+              {
+                "key": "osm_id",
+                "type": "Number"
+              },
+              {
+                "key": "name",
+                "type": "String"
+              },
+              {
+                "key": "facility_type",
+                "type": "String"
+              },
+              {
+                "key": "potential_candidate",
+                "type": "Boolean"
+              },
+              {
+                "key": "matched_street_count",
+                "type": "Number"
+              },
+              {
+                "key": "covered_street_count",
+                "type": "Number"
+              },
+              {
+                "key": "description",
+                "type": "Text"
+              }
+            ],
+            "stroke": false,
+            "circles": {
+              "radius": {
+                "min": 8
+              }
+            },
+            "cluster": {},
+            "browsable": true,
+            "iconClass": "Circle",
+            "inCaption": true,
+            "choropleth": {
+              "mode": "kmeans",
+              "brewer": "Blues",
+              "classes": 9
+            },
+            "remoteData": {
+              "ttl": "300",
+              "url": "https://tempo-30.adfc-berlin.de/uMap/playgrounds.geojson",
+              "proxy": true,
+              "format": "geojson"
+            },
+            "categorized": {
+              "mode": "alpha",
+              "brewer": "Blues"
+            },
+            "description": "Gelten seit der StVO-Novelle als neu aufgenommene privilegierte Orte zum besonderen Schutz von Kindern. Gemäß § 45 Abs. 9 Satz 4 Nr. 6 StVO kann im unmittelbaren Bereich (auf bis zu 300 Metern Länge) nun erleichtert Tempo 30 angeordnet werden, ohne dass eine qualifizierte Gefahrenlage nachgewiesen werden muss.",
+            "displayOnLoad": true,
+            "popupContentTemplate": "{description}"
+          },
+          "rank": 0
+        },
+        {
+          "type": "FeatureCollection",
+          "features": [],
+          "properties": {
+            "fill": false,
+            "heat": {},
+            "name": "Zebrastreifen",
+            "type": "Default",
+            "color": "White",
+            "rules": [
+              {
+                "name": "Ungeschützte Zebrastreifen",
+                "condition": "potential_candidate=true",
+                "properties": {
+                  "color": "Red",
+                  "iconOpacity": 0.9
+                }
+              }
+            ],
+            "fields": [
+              {
+                "key": "display_role",
+                "type": "String"
+              },
+              {
+                "key": "potential_candidate",
+                "type": "Boolean"
+              },
+              {
+                "key": "potential_reason",
+                "type": "String"
+              },
+              {
+                "key": "description",
+                "type": "Text"
+              }
+            ],
+            "stroke": true,
+            "weight": 4,
+            "cluster": {},
+            "iconUrl": "|||",
+            "browsable": true,
+            "inCaption": true,
+            "choropleth": {
+              "mode": "kmeans",
+              "brewer": "Blues",
+              "classes": 9
+            },
+            "remoteData": {
+              "ttl": "300",
+              "url": "https://tempo-30.adfc-berlin.de/uMap/zebra.geojson",
+              "proxy": true,
+              "format": "geojson",
+              "dynamic": false
+            },
+            "categorized": {
+              "mode": "alpha",
+              "brewer": "Blues"
+            },
+            "description": "Gemäß § 45 Abs. 9 Satz 4 Nr. 10 StVO kann im unmittelbaren Bereich eines Zebrastreifens nun erleichtert Tempo 30 angeordnet werden, ohne dass eine qualifizierte Gefahrenlage nachgewiesen werden muss.",
+            "iconOpacity": 0.4,
+            "displayOnLoad": true,
+            "popupContentTemplate": "{description}",
+            "iconClass": "Circle"
+          },
+          "rank": 1
+        },
+        {
+          "type": "FeatureCollection",
+          "features": [],
+          "properties": {
+            "name": "Einrichtungen für Menschen mit Behinderung",
+            "color": "White",
+            "rules": [
+              {
+                "name": "Ungeschützte Einrichtungen für Menschen mit Behinderungen",
+                "condition": "potential_candidate=true",
+                "properties": {
+                  "color": "Red"
+                }
+              }
+            ],
+            "fields": [
+              {
+                "key": "osm_id",
+                "type": "Number"
+              },
+              {
+                "key": "name",
+                "type": "String"
+              },
+              {
+                "key": "facility_type",
+                "type": "String"
+              },
+              {
+                "key": "facility_status",
+                "type": "String"
+              },
+              {
+                "key": "potential_candidate",
+                "type": "Boolean"
+              },
+              {
+                "key": "matched_street_count",
+                "type": "Number"
+              },
+              {
+                "key": "covered_street_count",
+                "type": "Number"
+              },
+              {
+                "key": "description",
+                "type": "Text"
+              }
+            ],
+            "opacity": 0.2,
+            "browsable": true,
+            "iconClass": "Default",
+            "inCaption": true,
+            "remoteData": {
+              "ttl": "3600",
+              "url": "https://tempo-30.adfc-berlin.de/uMap/disability_facilities.geojson",
+              "proxy": true,
+              "format": "geojson"
+            },
+            "description": "Wohnheime, Tagesstätten, Werkstätten, etc. sind seit der Reform explizit als geschützte sensible Orte im Straßenverkehrsrecht verankert. Gemäß § 45 Abs. 9 Satz 4 Nr. 6 StVO kann im unmittelbaren Bereich dieser Einrichtungen erleichtert Tempo 30 angeordnet werden, ohne dass der Nachweis einer qualifizierten Gefahrenlage erforderlich ist.",
+            "displayOnLoad": true,
+            "popupContentTemplate": "{description}"
+          },
+          "rank": 2
+        },
+        {
+          "type": "FeatureCollection",
+          "features": [],
+          "properties": {
+            "fill": true,
+            "heat": {},
+            "name": "Krankenhäuser",
+            "type": "Default",
+            "color": "Blue",
+            "rules": [
+              {
+                "name": "Krankenhaus an Tempo-50-Straßenabschnitt",
+                "condition": "potential_candidate=true",
+                "properties": {
+                  "color": "Red",
+                  "opacity": 0.7,
+                  "fillOpacity": 0.7
+                }
+              }
+            ],
+            "fields": [
+              {
+                "key": "osm_id",
+                "type": "Number"
+              },
+              {
+                "key": "name",
+                "type": "String"
+              },
+              {
+                "key": "facility_type",
+                "type": "String"
+              },
+              {
+                "key": "potential_candidate",
+                "type": "Boolean"
+              },
+              {
+                "key": "matched_street_count",
+                "type": "Number"
+              },
+              {
+                "key": "covered_street_count",
+                "type": "Number"
+              },
+              {
+                "key": "description",
+                "type": "Text"
+              }
+            ],
+            "stroke": false,
+            "circles": {
+              "radius": {
+                "min": 8
+              }
+            },
+            "cluster": {},
+            "browsable": true,
+            "iconClass": "Default",
+            "inCaption": true,
+            "choropleth": {
+              "mode": "kmeans",
+              "brewer": "Blues",
+              "classes": 9
+            },
+            "remoteData": {
+              "ttl": "300",
+              "url": "https://tempo-30.adfc-berlin.de/uMap/hospitals.geojson",
+              "proxy": true,
+              "format": "geojson"
+            },
+            "categorized": {
+              "mode": "alpha",
+              "brewer": "Blues"
+            },
+            "description": "Sind als sensible Gesundheitseinrichtungen im rechtlichen Ausnahmenkatalog zur Geschwindigkeitsreduzierung erfasst. Gemäß § 45 Abs. 9 Satz 4 Nr. 6 StVO kann im unmittelbaren Umfeld von Krankenhäusern erleichtert Tempo 30 angeordnet werden, ohne dass eine qualifizierte Gefahrenlage nachgewiesen werden muss.",
+            "displayOnLoad": true,
+            "popupContentTemplate": "{description}"
+          },
+          "rank": 3
+        },
+        {
+          "type": "FeatureCollection",
+          "features": [],
+          "properties": {
+            "name": "Schulen und Kitas",
+            "type": "Default",
+            "color": "#3b82f6",
+            "browsable": true,
+            "inCaption": true,
+            "displayOnLoad": true,
+            "remoteData": {
+              "ttl": "300",
+              "url": "https://tempo-30.adfc-berlin.de/uMap/educational_buildings.geojson",
+              "proxy": true,
+              "format": "geojson",
+              "dynamic": false
+            },
+            "popupContentTemplate": "{description}",
+            "fill": true,
+            "stroke": false,
+            "fillOpacity": 0.16,
+            "iconClass": "Circle",
+            "circles": {
+              "radius": {
+                "min": 8
+              }
+            },
+            "rules": [
+              {
+                "name": "Bildungseinrichtung mit Potenzial",
+                "condition": "potential_candidate=true",
+                "properties": {
+                  "color": "#d7191c",
+                  "fillOpacity": 0.7
+                }
+              }
+            ],
+            "fields": [
+              {
+                "key": "name",
+                "type": "String"
+              },
+              {
+                "key": "facility_type",
+                "type": "String"
+              },
+              {
+                "key": "potential_candidate",
+                "type": "Boolean"
+              },
+              {
+                "key": "matched_street_count",
+                "type": "Number"
+              },
+              {
+                "key": "covered_street_count",
+                "type": "Number"
+              },
+              {
+                "key": "description",
+                "type": "Text"
+              }
+            ],
+            "description": "OSM-Schulen und Kitas; Rot markiert offene Tempo-30-Prüffälle."
+          },
+          "rank": 4
+        },
+        {
+          "type": "FeatureCollection",
+          "features": [],
+          "properties": {
+            "name": "Senioren- und Pflegeeinrichtungen",
+            "type": "Default",
+            "color": "#7c6bb0",
+            "browsable": true,
+            "inCaption": true,
+            "displayOnLoad": true,
+            "remoteData": {
+              "ttl": "300",
+              "url": "https://tempo-30.adfc-berlin.de/uMap/elderly_homes.geojson",
+              "proxy": true,
+              "format": "geojson",
+              "dynamic": false
+            },
+            "popupContentTemplate": "{description}",
+            "fill": true,
+            "stroke": false,
+            "fillOpacity": 0.16,
+            "iconClass": "Circle",
+            "circles": {
+              "radius": {
+                "min": 8
+              }
+            },
+            "rules": [
+              {
+                "name": "Senioreneinrichtung mit Potenzial",
+                "condition": "potential_candidate=true",
+                "properties": {
+                  "color": "#d7191c",
+                  "fillOpacity": 0.7
+                }
+              }
+            ],
+            "fields": [
+              {
+                "key": "name",
+                "type": "String"
+              },
+              {
+                "key": "facility_type",
+                "type": "String"
+              },
+              {
+                "key": "potential_candidate",
+                "type": "Boolean"
+              },
+              {
+                "key": "matched_street_count",
+                "type": "Number"
+              },
+              {
+                "key": "covered_street_count",
+                "type": "Number"
+              },
+              {
+                "key": "description",
+                "type": "Text"
+              }
+            ],
+            "description": "OSM-Senioren- und Pflegeeinrichtungen; Rot markiert offene Prüffälle."
+          },
+          "rank": 5
+        }
+      ],
+      "type": "FeatureCollection",
+      "features": [],
+      "properties": {
+        "name": "Tempo 30 Indikatoren",
+        "group": true,
+        "fields": [],
+        "browsable": true,
+        "inCaption": true,
+        "remoteData": {},
+        "description": "Sensible Einrichtungen und Zebrastreifen mit Tempo-30-Prüfhinweisen.",
+        "displayOnLoad": true
+      },
+      "rank": 0
+    },
+    {
+      "type": "FeatureCollection",
+      "features": [],
+      "layers": [
+        {
+          "type": "FeatureCollection",
+          "features": [],
+          "properties": {
+            "name": "Straßen-Ways mit Tempo-30-Potenzial",
+            "type": "Default",
+            "color": "#d7191c",
+            "browsable": true,
+            "inCaption": true,
+            "displayOnLoad": true,
+            "remoteData": {
+              "ttl": "300",
+              "url": "https://tempo-30.adfc-berlin.de/uMap/potential_streets.geojson",
+              "proxy": true,
+              "format": "geojson",
+              "dynamic": false
+            },
+            "popupContentTemplate": "{description}",
+            "weight": 5,
+            "opacity": 0.85,
+            "rules": [
+              {
+                "name": "Bedingter Lückenschluss",
+                "condition": "is_conditional_gap=true",
+                "properties": {
+                  "color": "#8e44ad",
+                  "dashArray": "6,6"
+                }
+              }
+            ],
+            "fields": [
+              {
+                "key": "osm_id",
+                "type": "Number"
+              },
+              {
+                "key": "name",
+                "type": "String"
+              },
+              {
+                "key": "maxspeed_class",
+                "type": "String"
+              },
+              {
+                "key": "feature_type",
+                "type": "String"
+              },
+              {
+                "key": "is_conditional_gap",
+                "type": "Boolean"
+              },
+              {
+                "key": "logical_segment_length_m",
+                "type": "Number"
+              },
+              {
+                "key": "logical_segment_way_count",
+                "type": "Number"
+              },
+              {
+                "key": "gap_required_potential_types",
+                "type": "String"
+              },
+              {
+                "key": "description",
+                "type": "Text"
+              }
+            ],
+            "description": "Offene OSM-Straßenways; violett gestrichelt markiert einen Lückenschluss, der erst nach anderen Maßnahmen möglich wäre. Isolierte Abschnitte bis 50 m sind im Export ausgeblendet."
+          },
+          "rank": 0
+        },
+        {
+          "type": "FeatureCollection",
+          "features": [],
+          "properties": {
+            "name": "Prüfabschnitte an Einrichtungen",
+            "type": "Default",
+            "color": "#e6550d",
+            "browsable": true,
+            "inCaption": true,
+            "displayOnLoad": false,
+            "remoteData": {
+              "ttl": "300",
+              "url": "https://tempo-30.adfc-berlin.de/uMap/facility_street_segments.geojson",
+              "proxy": true,
+              "format": "geojson",
+              "dynamic": false
+            },
+            "popupContentTemplate": "{description}",
+            "weight": 6,
+            "opacity": 0.9,
+            "fields": [
+              {
+                "key": "facility_name",
+                "type": "String"
+              },
+              {
+                "key": "street_name",
+                "type": "String"
+              },
+              {
+                "key": "current_speed_kmh",
+                "type": "Number"
+              },
+              {
+                "key": "distance_m",
+                "type": "Number"
+              },
+              {
+                "key": "facility_osm_url",
+                "type": "String"
+              },
+              {
+                "key": "street_osm_url",
+                "type": "String"
+              },
+              {
+                "key": "description",
+                "type": "Text"
+              }
+            ],
+            "description": "Konkrete Teile der Tempo-50/60-Ways innerhalb von 20 m einer Einrichtung; keine festgelegten Anordnungsgrenzen."
+          },
+          "rank": 1
+        },
+        {
+          "type": "FeatureCollection",
+          "features": [],
+          "properties": {
+            "name": "Bereits abgedeckte Anschlussabschnitte",
+            "type": "Default",
+            "color": "#1a9850",
+            "browsable": true,
+            "inCaption": true,
+            "displayOnLoad": false,
+            "remoteData": {
+              "ttl": "300",
+              "url": "https://tempo-30.adfc-berlin.de/uMap/facility_covered_street_segments.geojson",
+              "proxy": true,
+              "format": "geojson",
+              "dynamic": false
+            },
+            "popupContentTemplate": "{description}",
+            "weight": 5,
+            "opacity": 0.8,
+            "rules": [
+              {
+                "name": "Bedingtes Tempo 30",
+                "condition": "conditional_speed=30",
+                "properties": {
+                  "color": "#4575b4",
+                  "dashArray": "5,5"
+                }
+              }
+            ],
+            "fields": [
+              {
+                "key": "facility_name",
+                "type": "String"
+              },
+              {
+                "key": "street_name",
+                "type": "String"
+              },
+              {
+                "key": "coverage_status",
+                "type": "String"
+              },
+              {
+                "key": "conditional_detail",
+                "type": "String"
+              },
+              {
+                "key": "distance_start_m",
+                "type": "Number"
+              },
+              {
+                "key": "distance_end_m",
+                "type": "Number"
+              },
+              {
+                "key": "description",
+                "type": "Text"
+              }
+            ],
+            "description": "Bereits langsame Straßenfortsetzungen bis 500 m entlang der Straße; bedingtes Tempo 30 ist blau gestrichelt."
+          },
+          "rank": 2
+        }
+      ],
+      "properties": {
+        "name": "Straßenabschnitte",
+        "group": true,
+        "browsable": true,
+        "inCaption": true,
+        "displayOnLoad": true
+      },
+      "rank": 1
+    },
+    {
+      "type": "FeatureCollection",
+      "features": [],
+      "properties": {
+        "heat": {},
+        "name": "Bezirksstatistiken",
+        "type": "Choropleth",
+        "fields": [
+          {
+            "key": "district_id",
+            "type": "String"
+          },
+          {
+            "key": "district_name",
+            "type": "String"
+          },
+          {
+            "key": "osm_id",
+            "type": "Number"
+          },
+          {
+            "key": "crossing_total",
+            "type": "Number"
+          },
+          {
+            "key": "crossing_potential",
+            "type": "Number"
+          },
+          {
+            "key": "crossing_potential_pct",
+            "type": "Number"
+          },
+          {
+            "key": "disability_facilities_total",
+            "type": "Number"
+          },
+          {
+            "key": "disability_facilities_potential",
+            "type": "Number"
+          },
+          {
+            "key": "disability_facilities_potential_pct",
+            "type": "Number"
+          },
+          {
+            "key": "educational_buildings_total",
+            "type": "Number"
+          },
+          {
+            "key": "educational_buildings_potential",
+            "type": "Number"
+          },
+          {
+            "key": "educational_buildings_potential_pct",
+            "type": "Number"
+          },
+          {
+            "key": "elderly_homes_total",
+            "type": "Number"
+          },
+          {
+            "key": "elderly_homes_potential",
+            "type": "Number"
+          },
+          {
+            "key": "elderly_homes_potential_pct",
+            "type": "Number"
+          },
+          {
+            "key": "hospitals_total",
+            "type": "Number"
+          },
+          {
+            "key": "hospitals_potential",
+            "type": "Number"
+          },
+          {
+            "key": "hospitals_potential_pct",
+            "type": "Number"
+          },
+          {
+            "key": "playgrounds_total",
+            "type": "Number"
+          },
+          {
+            "key": "playgrounds_potential",
+            "type": "Number"
+          },
+          {
+            "key": "playgrounds_potential_pct",
+            "type": "Number"
+          },
+          {
+            "key": "playgrounds",
+            "type": "Number"
+          },
+          {
+            "key": "playground_potential",
+            "type": "Number"
+          },
+          {
+            "key": "playground_potential_pct",
+            "type": "Number"
+          },
+          {
+            "key": "gap_potential",
+            "type": "Number"
+          },
+          {
+            "key": "all_types_total",
+            "type": "Number"
+          },
+          {
+            "key": "all_types_potential",
+            "type": "Number"
+          },
+          {
+            "key": "all_types_realized",
+            "type": "Number"
+          },
+          {
+            "key": "realized_potential_pct_total",
+            "type": "Number"
+          },
+          {
+            "key": "gap_direct_potential",
+            "type": "Number"
+          },
+          {
+            "key": "gap_conditional_potential",
+            "type": "Number"
+          }
+        ],
+        "stroke": true,
+        "labelKey": "realized_potential_pct_total",
+        "browsable": true,
+        "inCaption": true,
+        "choropleth": {
+          "mode": "kmeans",
+          "brewer": "RdYlGn",
+          "classes": 5,
+          "property": "realized_potential_pct_total"
+        },
+        "popupShape": "Large",
+        "remoteData": {
+          "ttl": "300",
+          "url": "https://tempo-30.adfc-berlin.de/uMap/district_stats.geojson",
+          "proxy": true,
+          "format": "geojson",
+          "dynamic": false
+        },
+        "description": "Anteil geprüfter Objekte ohne offenes Potenzial. Dies ist kein Nachweis einer umgesetzten Tempo-30-Maßnahme.",
+        "displayOnLoad": true,
+        "popupTemplate": "Default",
+        "popupContentTemplate": "# {district_name}\n\nRealisierte Potenziale gesamt: {realized_potential_pct_total}% ({all_types_realized}/{all_types_total})\nOffene Potenziale gesamt: {all_types_potential}\n\nUngeschützte Überwege: {crossing_potential_pct}% ({crossing_potential}/{crossing_total})\nSpielplätze mit Potenzial: {playground_potential_pct}% ({playground_potential}/{playgrounds})\nBildungseinrichtungen mit Potenzial: {educational_buildings_potential_pct}% ({educational_buildings_potential}/{educational_buildings_total})\nKrankenhäuser mit Potenzial: {hospitals_potential_pct}% ({hospitals_potential}/{hospitals_total})\nSeniorenheime mit Potenzial: {elderly_homes_potential_pct}% ({elderly_homes_potential}/{elderly_homes_total})\nBehinderteneinrichtungen mit Potenzial: {disability_facilities_potential_pct}% ({disability_facilities_potential}/{disability_facilities_total})\n\nLückenschlüsse: {gap_potential}\nDirekte Lückenschlüsse: {gap_direct_potential}\nBedingte Lückenschlüsse: {gap_conditional_potential}",
+        "color": "#666666",
+        "weight": 1,
+        "fillOpacity": 0.5
+      },
+      "rank": 2
+    },
+    {
+      "type": "FeatureCollection",
+      "features": [],
+      "layers": [
+        {
+          "type": "FeatureCollection",
+          "features": [],
+          "properties": {
+            "name": "Behinderteneinrichtungen – ungeklärt",
+            "type": "Default",
+            "color": "#999999",
+            "browsable": true,
+            "inCaption": true,
+            "displayOnLoad": false,
+            "remoteData": {
+              "ttl": "300",
+              "url": "https://tempo-30.adfc-berlin.de/uMap/disability_facilities_review.geojson",
+              "proxy": true,
+              "format": "geojson",
+              "dynamic": false
+            },
+            "popupContentTemplate": "{description}",
+            "fill": true,
+            "stroke": false,
+            "fillOpacity": 0.18,
+            "iconClass": "Circle",
+            "circles": {
+              "radius": {
+                "min": 7
+              }
+            },
+            "fields": [
+              {
+                "key": "name",
+                "type": "String"
+              },
+              {
+                "key": "facility_type",
+                "type": "String"
+              },
+              {
+                "key": "facility_status",
+                "type": "String"
+              },
+              {
+                "key": "potential_candidate",
+                "type": "Boolean"
+              },
+              {
+                "key": "description",
+                "type": "Text"
+              }
+            ],
+            "description": "Nicht als bestätigtes Behinderten-Potenzial gewertete OSM-Einrichtungen; Typ und Zielgruppe prüfen."
+          },
+          "rank": 0
+        },
+        {
+          "type": "FeatureCollection",
+          "features": [],
+          "properties": {
+            "name": "OSM-Geschwindigkeiten (großer Layer)",
+            "type": "Default",
+            "color": "#999999",
+            "browsable": true,
+            "inCaption": true,
+            "displayOnLoad": false,
+            "remoteData": {
+              "ttl": "300",
+              "url": "https://tempo-30.adfc-berlin.de/uMap/streets_and_limit.geojson",
+              "proxy": true,
+              "format": "geojson",
+              "dynamic": false
+            },
+            "popupContentTemplate": "# {name}\nOSM-Geschwindigkeitsklasse: {maxspeed_class}\n[[https://www.openstreetmap.org/way/{osm_id}|OSM-Straßenway prüfen]]",
+            "weight": 2,
+            "opacity": 0.5,
+            "rules": [
+              {
+                "name": "Tempo 50/60",
+                "condition": "maxspeed_class=T50+",
+                "properties": {
+                  "color": "#e34a33",
+                  "weight": 3
+                }
+              },
+              {
+                "name": "Tempo 30 oder langsamer",
+                "condition": "maxspeed_class=T30-",
+                "properties": {
+                  "color": "#31a354"
+                }
+              },
+              {
+                "name": "Bedingtes Tempo 30",
+                "condition": "maxspeed_class=Conditional-T30",
+                "properties": {
+                  "color": "#3182bd",
+                  "dashArray": "5,5"
+                }
+              }
+            ],
+            "fields": [
+              {
+                "key": "osm_id",
+                "type": "Number"
+              },
+              {
+                "key": "name",
+                "type": "String"
+              },
+              {
+                "key": "maxspeed_class",
+                "type": "String"
+              }
+            ],
+            "description": "OSM-Grundklassen aller Straßen-Ways. Rund 55 MB; deshalb standardmäßig ausgeschaltet."
+          },
+          "rank": 1
+        }
+      ],
+      "properties": {
+        "name": "OSM-Kontext und Prüffälle",
+        "group": true,
+        "browsable": true,
+        "inCaption": true,
+        "displayOnLoad": true
+      },
+      "rank": 3
+    }
+  ]
+}
