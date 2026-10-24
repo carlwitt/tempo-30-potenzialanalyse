@@ -216,7 +216,7 @@ def street_layers():
                              ("current_speed_kmh", "Number"), ("distance_m", "Number"),
                              ("facility_osm_url", "String"), ("street_osm_url", "String"),
                              ("description", "Text")),
-            "description": "Konkrete Teile der Tempo-50/60-Ways innerhalb von 20 m einer Einrichtung; keine festgelegten Anordnungsgrenzen.",
+            "description": "Konkrete Teile der Tempo-50/60-Straßenabschnitte innerhalb von 20 m einer Einrichtung. Isolierte kurze Zuschnitte und bereits aus der Potenzialansicht entfernte Straßenfragmente sind ausgeblendet; keine festgelegten Anordnungsgrenzen.",
         },
     )
     covered = remote_layer(

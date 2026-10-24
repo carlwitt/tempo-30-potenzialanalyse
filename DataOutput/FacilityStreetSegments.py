@@ -6,8 +6,12 @@ import geopandas as gpd
 import pandas as pd
 from shapely.geometry import LineString, MultiLineString
 
+from DataOutput.PotentialStreetConsolidation import PotentialStreetConsolidation
+
 
 class FacilityStreetSegments:
+    MIN_ISOLATED_CLIP_M = 10.0
+
     @staticmethod
     def create(streets, facilities, potential_results):
         pairs_by_layer = {
@@ -64,6 +68,28 @@ class FacilityStreetSegments:
         ]
         result = gpd.GeoDataFrame(records, columns=columns, geometry="geometry", crs="EPSG:25832")
         return result.to_crs(streets.crs)
+
+    @staticmethod
+    def filter_short_isolated(segments, retained_street_ids):
+        """Hide tiny facility clips unless they join a useful nearby section."""
+        # Keep the facility overlay aligned with the consolidated potential streets.
+        visible = segments.loc[segments["street_osm_id"].isin(retained_street_ids)].copy()
+        if visible.empty:
+            return visible
+
+        metric = visible.to_crs("EPSG:25832").reset_index(drop=True)
+        keys = []
+        for _, segment in metric.iterrows():
+            name = segment["street_name"]
+            street_key = name if name != "Straße ohne OSM-Namen" else segment["street_osm_id"]
+            keys.append((segment["facility_layer"], segment["facility_id"], street_key))
+
+        retained = []
+        # Measure connected clips together so a short connector is not lost.
+        for members in PotentialStreetConsolidation.connected_members(metric, keys):
+            if metric.geometry.iloc[members].length.sum() > FacilityStreetSegments.MIN_ISOLATED_CLIP_M:
+                retained.extend(members)
+        return visible.iloc[sorted(retained)].copy()
 
     @staticmethod
     def annotate_facilities(features, segments, layer):

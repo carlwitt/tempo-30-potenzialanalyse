@@ -20,7 +20,7 @@ class PotentialStreetConsolidation:
         ))
 
     @staticmethod
-    def _connected_members(metric, keys):
+    def connected_members(metric, keys):
         parent = list(range(len(metric)))
         tolerance = PotentialStreetConsolidation.ENDPOINT_TOLERANCE_M
         spatial_index = metric.sindex
@@ -79,7 +79,7 @@ class PotentialStreetConsolidation:
                     streets["is_conditional_gap"], streets["gap_required_potentials"]
                 ))
             ]
-            for members in PotentialStreetConsolidation._connected_members(metric, keys):
+            for members in PotentialStreetConsolidation.connected_members(metric, keys):
                 if len(members) > 1 and sum(lengths.iloc[index] for index in members) > 50:
                     protected.update(index for index in members if keys[index] is not None)
 
@@ -97,7 +97,7 @@ class PotentialStreetConsolidation:
 
         names = [str(name).strip() if pd.notna(name) and str(name).strip() else None
                  for name in metric["name"]]
-        components = PotentialStreetConsolidation._connected_members(metric, names)
+        components = PotentialStreetConsolidation.connected_members(metric, names)
         length_by_index = {}
         count_by_index = {}
         for members in components:
@@ -130,7 +130,7 @@ class PotentialStreetConsolidation:
                         else None)
 
         records = []
-        for members in PotentialStreetConsolidation._connected_members(metric, keys):
+        for members in PotentialStreetConsolidation.connected_members(metric, keys):
             row = metric.iloc[members[0]].copy()
             source_ids = [int(metric.iloc[index]["osm_id"]) for index in members]
             row["source_osm_ids"] = source_ids

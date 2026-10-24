@@ -661,7 +661,7 @@
                 "type": "Text"
               }
             ],
-            "description": "Konkrete Teile der Tempo-50/60-Ways innerhalb von 20 m einer Einrichtung; keine festgelegten Anordnungsgrenzen."
+            "description": "Konkrete Teile der Tempo-50/60-Straßenabschnitte innerhalb von 20 m einer Einrichtung. Isolierte kurze Zuschnitte und bereits aus der Potenzialansicht entfernte Straßenfragmente sind ausgeblendet; keine festgelegten Anordnungsgrenzen."
           },
           "rank": 1
         },

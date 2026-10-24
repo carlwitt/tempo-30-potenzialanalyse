@@ -35,12 +35,6 @@ class GeoJsonCreator:
 
         for key, data in building_data.items():
             export_data_dict[key] = data.copy()
-        export_data_dict["facility_street_segments"] = FacilityStreetSegments.create(
-            streets_w_limit_gdf, building_data, potential_results or {}
-        )
-        export_data_dict["facility_covered_street_segments"] = AdjacentCoveredSegments.create(
-            streets_w_limit_gdf, building_data, potential_results or {}
-        )
 
         export_data_dict["potential_streets"]["feature_type"] = \
             export_data_dict["potential_streets"]["feature_type"].map({
@@ -64,6 +58,24 @@ class GeoJsonCreator:
         export_data_dict["potential_streets"] = PotentialStreetConsolidation.consolidate_conditional_gaps(
             export_data_dict["potential_streets"], streets_w_limit_gdf
         )
+        retained_street_ids = {
+            street_id for ids in export_data_dict["potential_streets"]["source_osm_ids"]
+            for street_id in ids
+        }
+        proposals = FacilityStreetSegments.create(
+            streets_w_limit_gdf, building_data, potential_results or {}
+        )
+        proposals = FacilityStreetSegments.filter_short_isolated(proposals, retained_street_ids)
+        export_data_dict["facility_street_segments"] = proposals
+
+        visible_pairs = set(zip(
+            proposals["facility_layer"], proposals["facility_id"], proposals["street_osm_id"]
+        ))
+        export_data_dict["facility_covered_street_segments"] = AdjacentCoveredSegments.create(
+            streets_w_limit_gdf, building_data, potential_results or {},
+            visible_proposal_pairs=visible_pairs,
+        )
+
         export_data_dict["potential_streets"] = FacilityStreetSegments.annotate_potential_streets(
             export_data_dict["potential_streets"], export_data_dict["facility_street_segments"]
         )

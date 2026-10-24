@@ -107,6 +107,24 @@ class AdjacentCoveredSegmentsTests(unittest.TestCase):
         self.assertEqual(result.street_osm_id.tolist(), [20])
         self.assertEqual(result.coverage_status.tolist(), ["Tempo-30-Zone"])
 
+    def test_covered_context_uses_only_visible_facility_source_pairs(self):
+        streets = self._streets([
+            (10, "Hauptstraße", "50", None, [(0, 0), (100, 0)]),
+            (11, "Hauptstraße", "50", None, [(100, 0), (200, 0)]),
+            (20, "Hauptstraße", "30", None, [(200, 0), (300, 0)]),
+        ])
+        potentials = {"educational_buildings": PotentialCalculationResult(
+            [10, 11], [1], [(1, 10), (1, 11)]
+        )}
+
+        result = AdjacentCoveredSegments.create(
+            streets, {"educational_buildings": self._facility(150)}, potentials,
+            visible_proposal_pairs={("educational_buildings", 1, 11)},
+        )
+
+        self.assertEqual(result.street_osm_id.tolist(), [20])
+        self.assertEqual(result.source_street_osm_id.tolist(), [11])
+
 
 if __name__ == "__main__":
     unittest.main()

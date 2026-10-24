@@ -134,7 +134,10 @@ class AdjacentCoveredSegments:
             current, joint = road, other_end
 
     @staticmethod
-    def create(streets, facilities, potential_results, max_distance_m=MAX_DISTANCE_M):
+    def create(
+        streets, facilities, potential_results, max_distance_m=MAX_DISTANCE_M,
+        visible_proposal_pairs=None,
+    ):
         """Follow each matched road from its facility-nearest point, up to 500 m."""
         columns = [
             "facility_layer", "facility_id", "facility_name", "facility_osm_url",
@@ -147,6 +150,7 @@ class AdjacentCoveredSegments:
             (layer, facility_id, road_id)
             for layer, result in potential_results.items() if layer in facilities
             for facility_id, road_id in (result.source_street_pairs or [])
+            if visible_proposal_pairs is None or (layer, facility_id, road_id) in visible_proposal_pairs
         ]
         if not pairs:
             return gpd.GeoDataFrame(columns=columns, geometry="geometry", crs=streets.crs)

@@ -91,6 +91,42 @@ class FacilityStreetSegmentsTests(unittest.TestCase):
         self.assertGreater(lines.geometry.iloc[0].length, 38)
         self.assertIn("innerhalb 20 m", lines.description.iloc[0])
 
+    def test_filters_isolated_short_clips_but_keeps_connected_sections(self):
+        segments = gpd.GeoDataFrame(
+            {
+                "facility_layer": ["educational_buildings"] * 5,
+                "facility_id": [1, 1, 1, 1, 2],
+                "street_osm_id": [10, 20, 21, 22, 23],
+                "street_name": ["Teststraße"] * 5,
+            },
+            geometry=[
+                LineString([(0, 0), (1.7, 0)]),
+                LineString([(10, 0), (14, 0)]),
+                LineString([(14, 0), (22, 0)]),
+                LineString([(100, 0), (109, 0)]),
+                LineString([(10, 0), (18, 0)]),
+            ],
+            crs="EPSG:25832",
+        )
+
+        result = FacilityStreetSegments.filter_short_isolated(segments, {20, 21, 22, 23})
+
+        self.assertEqual(result.street_osm_id.tolist(), [20, 21])
+        self.assertEqual(len(segments), 5)
+
+    def test_empty_visible_sources_preserve_layer_schema(self):
+        segments = gpd.GeoDataFrame(
+            {"street_osm_id": [10], "facility_layer": ["educational_buildings"],
+             "facility_id": [1], "street_name": ["Teststraße"]},
+            geometry=[LineString([(0, 0), (2, 0)])], crs="EPSG:25832",
+        )
+
+        result = FacilityStreetSegments.filter_short_isolated(segments, set())
+
+        self.assertTrue(result.empty)
+        self.assertEqual(result.crs, segments.crs)
+        self.assertEqual(result.columns.tolist(), segments.columns.tolist())
+
 
 if __name__ == "__main__":
     unittest.main()
