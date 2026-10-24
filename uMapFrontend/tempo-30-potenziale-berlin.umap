@@ -194,8 +194,7 @@
             "description": "Im unmittelbaren Bereich von Fußgängerüberwegen kann gemäß § 45 Abs. 9 Satz 4 Nr. 6 StVO erleichtert eine streckenbezogene Beschränkung auf Tempo 30 angeordnet werden, ohne dass eine qualifizierte Gefahrenlage nachgewiesen werden muss. Nach der VwV-StVO ist die Anordnung auf insgesamt höchstens 300 m zu begrenzen; die konkrete Situation ist zu prüfen.",
             "iconOpacity": 0.4,
             "displayOnLoad": true,
-            "popupContentTemplate": "{description}",
-            "iconClass": "Circle"
+            "popupContentTemplate": "{description}"
           },
           "rank": 1
         },

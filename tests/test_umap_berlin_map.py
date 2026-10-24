@@ -80,6 +80,20 @@ class BerlinUMapTests(unittest.TestCase):
                       indicators["Schulen und Kitas"]["description"])
         self.assertIn("Nr. 6 StVO", indicators["Zebrastreifen"]["description"])
 
+    def test_zebra_marker_matches_backup_while_segments_remain_visible(self):
+        def zebra_properties(map_data):
+            return next(layer["properties"] for layer in map_data["layers"][0]["layers"]
+                        if layer["properties"]["name"] == "Zebrastreifen")
+
+        original = zebra_properties(self.backup)
+        generated = zebra_properties(self.generated)
+        for key in ("iconUrl", "iconOpacity", "color", "rules", "fill"):
+            self.assertEqual(generated[key], original[key], key)
+        self.assertNotIn("iconClass", generated)
+        self.assertTrue(generated["stroke"])
+        self.assertEqual(generated["weight"], 4)
+        self.assertEqual(generated["remoteData"]["url"], original["remoteData"]["url"])
+
 
 if __name__ == "__main__":
     unittest.main()

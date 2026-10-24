@@ -112,8 +112,8 @@ def complete_indicators(indicators):
                                ("description", "Text"), ("popup_content", "Text")),
     }
 
-    # Preserve the backup's four styled layers, while matching their field
-    # types to the actual GeoJSON booleans and showing zebra line segments.
+    # Preserve the backup's zebra stripe marker while keeping crossing
+    # segments visible and matching field types to the GeoJSON booleans.
     for layer in layers:
         props = layer["properties"]
         props["fields"] = current_fields[props["name"]]
@@ -122,8 +122,7 @@ def complete_indicators(indicators):
             props["popupContentTemplate"] = FACILITY_POPUP
         else:
             props["popupContentTemplate"] = "{description}"
-        if props["name"] == "Zebrastreifen":
-            props.update({"stroke": True, "iconClass": "Circle", "weight": 4})
+            props.update({"stroke": True, "weight": 4})
 
     education = remote_layer(
         "educational_buildings", "Schulen und Kitas", color="#3b82f6", on_load=True,
