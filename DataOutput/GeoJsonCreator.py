@@ -6,6 +6,7 @@ from pathlib import Path
 import geopandas as gpd
 
 from DataOutput.AdjacentCoveredSegments import AdjacentCoveredSegments
+from DataOutput.ConditionalGapMetadata import ConditionalGapMetadata
 from DataOutput.DistrictStatsCreator import DistrictStatsCreator
 from DataOutput.FacilityStreetSegments import FacilityStreetSegments
 from DataOutput.OSMVerificationMetadata import OSMVerificationMetadata
@@ -56,6 +57,11 @@ class GeoJsonCreator:
         export_data_dict["potential_streets"] = AdjacentCoveredSegments.annotate_potential_streets(
             export_data_dict["potential_streets"], export_data_dict["facility_covered_street_segments"]
         )
+        gap_result = (potential_results or {}).get("gap")
+        export_data_dict["potential_streets"] = ConditionalGapMetadata.annotate(
+            export_data_dict["potential_streets"], gap_result, potential_results or {},
+            {"zebra": zebra_gdf, **building_data},
+        )
 
         # Bundle speed limits
         mapping = {
@@ -81,6 +87,10 @@ class GeoJsonCreator:
             "name",
             "maxspeed_class",
             "feature_type",
+            "is_conditional_gap",
+            "gap_required_potentials",
+            "gap_required_potential_types",
+            "gap_required_street_osm_ids",
             "description",
             "geometry"
         ]]
@@ -116,7 +126,11 @@ class GeoJsonCreator:
                 streets_w_limit_gdf["osm_id"].isin(gap_street_ids or [])
             ]
             export_data_dict["district_stats"] = DistrictStatsCreator.create(
-                districts_gdf, export_data_dict["zebra"], streets_w_limit_gdf, building_data, gap_streets
+                districts_gdf, export_data_dict["zebra"], streets_w_limit_gdf,
+                building_data, gap_streets,
+                conditional_gap_street_ids=set(
+                    (gap_result.conditional_gap_dependencies or {}) if gap_result else {}
+                ),
             )
 
         for building_type in building_data.keys():

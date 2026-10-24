@@ -32,7 +32,7 @@ class DistrictStatsCreatorTests(unittest.TestCase):
             crs="EPSG:4326",
         )
         gap_streets = gpd.GeoDataFrame(
-            {"feature_type": [
+            {"osm_id": [100, 101, 102], "feature_type": [
                 "Potenzial durch Lückenschluss",
                 "Potenzial durch mehrere Faktoren",
                 "Potenzial durch Lückenschluss",
@@ -49,7 +49,10 @@ class DistrictStatsCreatorTests(unittest.TestCase):
             crs="EPSG:4326",
         )
 
-        result = DistrictStatsCreator.create(districts, crossings, streets, {"playgrounds": playgrounds}, gap_streets)
+        result = DistrictStatsCreator.create(
+            districts, crossings, streets, {"playgrounds": playgrounds}, gap_streets,
+            conditional_gap_street_ids={101},
+        )
 
         self.assertEqual(result.crossing_total.tolist(), [2, 1, 0])
         self.assertEqual(result.crossing_potential.tolist(), [2, 0, 0])
@@ -63,6 +66,8 @@ class DistrictStatsCreatorTests(unittest.TestCase):
         self.assertEqual(result.playground_potential.tolist(), [0, 1, 0])
         self.assertEqual(result.playground_potential_pct.iloc[:2].tolist(), [0.0, 100.0])
         self.assertEqual(result.gap_potential.tolist(), [2, 1, 0])
+        self.assertEqual(result.gap_conditional_potential.tolist(), [0, 1, 0])
+        self.assertEqual(result.gap_direct_potential.tolist(), [2, 0, 0])
         self.assertEqual(result.all_types_total.tolist(), [3, 2, 0])
         self.assertEqual(result.all_types_potential.tolist(), [2, 1, 0])
         self.assertEqual(result.all_types_realized.tolist(), [1, 1, 0])

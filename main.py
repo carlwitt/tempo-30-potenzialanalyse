@@ -126,7 +126,9 @@ for key in building_data.keys():
     )
 
 print("Identifying Gaps ...")
-potential_results["gap"] = Tempo50GapPotential.find_all_tempo_50_gaps(gdf = streets_gdf)
+potential_results["gap"] = Tempo50GapPotential.find_all_tempo_50_gaps(
+    gdf=streets_gdf, potential_results=potential_results
+)
 
 
 #######################################

@@ -1,7 +1,6 @@
 import math
 import geopandas as gpd
 from shapely.geometry import Point
-from typing import List
 import pandas as pd
 from pyproj import Transformer
 from tqdm import tqdm
@@ -124,8 +123,29 @@ class Tempo50GapPotential:
         seg,
         gdf,
         max_total_length: float = 500,
-        min_total_length: float = 30
+        min_total_length: float = 30,
+        potential_types_by_street: dict[int, set[str]] | None = None,
     ) -> bool:
+        """Return whether both ends reach current or prospective Tempo 30.
+
+        Dependency groups are returned separately so a prospective anchor is
+        never mistaken for an already implemented speed restriction.
+        """
+
+        found, _ = Tempo50GapPotential.evaluate_gap(
+            seg, gdf, max_total_length, min_total_length, potential_types_by_street
+        )
+        return found
+
+    @staticmethod
+    def evaluate_gap(
+        seg,
+        gdf,
+        max_total_length: float = 500,
+        min_total_length: float = 30,
+        potential_types_by_street: dict[int, set[str]] | None = None,
+    ) -> tuple[bool, list[list[tuple[str, int]]]]:
+        potential_types_by_street = potential_types_by_street or {}
 
         base_angles = {
             "Standard": seg.angle_start,
@@ -138,6 +158,7 @@ class Tempo50GapPotential:
         }
 
         lengths = {}
+        required_groups = []
 
         for dir in ["Standard", "Reverse"]:
             used_point = base_points[dir]
@@ -147,20 +168,23 @@ class Tempo50GapPotential:
                 lengths[dir] = 0.0
                 continue
 
-            ok, length = Tempo50GapPotential.follow_straight_chain(seg, used_point, base_angle, gdf)
+            ok, length, options = Tempo50GapPotential.follow_straight_chain(
+                seg, used_point, base_angle, gdf,
+                potential_types_by_street=potential_types_by_street,
+            )
             if not ok:
-                return False
+                return False, []
 
             lengths[dir] = length
+            if options:
+                required_groups.append(options)
 
         total_corridor_length = lengths["Standard"] + lengths["Reverse"] + seg.length_m
         dbg(seg, f'{seg.osm_id} std length: {lengths["Standard"]}, reverse {lengths["Reverse"]}, seg {seg.length_m}')
         
-        if total_corridor_length <= max_total_length:
-            if total_corridor_length >= min_total_length:
-                return True
-
-        return False
+        if min_total_length <= total_corridor_length <= max_total_length:
+            return True, required_groups
+        return False, required_groups
        
     
     def all_directions_tempo30(seg, point, gdf):
@@ -175,7 +199,10 @@ class Tempo50GapPotential:
         return (touching["maxspeed_class"].isin({"30", "30_Zone"}) | (touching["conditional_speed"] == "30")).all()
 
 
-    def follow_straight_chain(start_seg, start_point, start_angle, gdf, max_depth = 10, angle_tol = 30):
+    def follow_straight_chain(
+        start_seg, start_point, start_angle, gdf, max_depth=10, angle_tol=30,
+        potential_types_by_street: dict[int, set[str]] | None = None,
+    ):
 
         current_seg = start_seg
         current_point = start_point
@@ -201,7 +228,7 @@ class Tempo50GapPotential:
 
             if candidates.empty:
                 dbg(start_seg, "❌ No candidates")
-                return False, total_length
+                return False, total_length, []
 
             best_cand = None
             best_diff = 999
@@ -221,7 +248,7 @@ class Tempo50GapPotential:
 
             if best_cand is None:
                 dbg(start_seg, "❌ No candidate passed endpoint + angle checks")
-                return False, total_length
+                return False, total_length, []
 
             dbg(start_seg,
                 f"✅ Best candidate: osm_id={best_cand.osm_id}, "
@@ -232,16 +259,23 @@ class Tempo50GapPotential:
 
             if best_cand.osm_id in visited:
                 dbg(start_seg, "⛔ Rejected: loop detected")
-                return False, total_length
+                return False, total_length, []
 
             if best_diff > angle_tol:
                 dbg(start_seg, "⛔ Rejected: angle to steep")
-                return False, total_length
+                return False, total_length, []
 
             # ➜ Erfolg: Tempo 30 erreicht
             if best_cand.maxspeed_class in {"30", "30_Zone"} or best_cand.conditional_speed == "30":
                 dbg(start_seg, "✅ Accepted: Found end candidate")
-                return True, total_length
+                return True, total_length, []
+
+            # A tagged facility/crossing potential would become the second
+            # Tempo-30 anchor only after that separate measure is realized.
+            potential_types = (potential_types_by_street or {}).get(best_cand.osm_id, set())
+            if potential_types:
+                options = [(kind, best_cand.osm_id) for kind in sorted(potential_types)]
+                return True, total_length, options
 
             visited.add(best_cand.osm_id)
             total_length += best_cand.length_m
@@ -257,15 +291,27 @@ class Tempo50GapPotential:
             current_seg = best_cand
 
         dbg(start_seg,"⛔ Rejected: Reeched end of search")
-        return False, total_length
+        return False, total_length, []
 
 
     # -----------------------------------------------------
     # Hauptfunktion
     # -----------------------------------------------------
     @staticmethod
-    def find_all_tempo_50_gaps(gdf: gpd.GeoDataFrame) -> List[int]:
+    def find_all_tempo_50_gaps(
+        gdf: gpd.GeoDataFrame,
+        potential_results: dict[str, PotentialCalculationResult] | None = None,
+    ) -> PotentialCalculationResult:
         gdf = Tempo50GapPotential.prepare_gdf(gdf)
+
+        # Only independent, still-open facility/crossing potentials may serve
+        # as future anchors; a gap must never depend on another gap.
+        potential_types_by_street = {}
+        for kind, potential in (potential_results or {}).items():
+            if kind == "gap":
+                continue
+            for street_id in potential.street_ids:
+                potential_types_by_street.setdefault(street_id, set()).add(kind)
 
         classified_permanent_tempo50_or_60 = gdf[
             (gdf["maxspeed_class"].isin({"50", "60"})) &
@@ -274,13 +320,29 @@ class Tempo50GapPotential:
         ]
 
         result = []
+        conditional_dependencies = {}
 
         for _, seg in tqdm(classified_permanent_tempo50_or_60.iterrows(),
                         total=len(classified_permanent_tempo50_or_60),
                         desc="Checking segments"):
             
-            if Tempo50GapPotential.check_if_straight_line_direction_for_both_ends_has_tempo_30(seg, gdf):
+            found, required_groups = Tempo50GapPotential.evaluate_gap(
+                seg, gdf, potential_types_by_street=potential_types_by_street
+            )
+            # A future anchor can be reached before a valid existing one, or
+            # make the provisional corridor shorter than the 30 m minimum.
+            # In either case the existing, direct connection takes priority.
+            if required_groups and Tempo50GapPotential.check_if_straight_line_direction_for_both_ends_has_tempo_30(
+                seg, gdf
+            ):
+                found, required_groups = True, []
+            if found:
                 dbg(seg, "Found landwehrst. segment with potential!")
                 result.append(seg.osm_id)
+                if required_groups:
+                    conditional_dependencies[seg.osm_id] = required_groups
 
-        return PotentialCalculationResult(street_ids = result)
+        return PotentialCalculationResult(
+            street_ids=result,
+            conditional_gap_dependencies=conditional_dependencies,
+        )

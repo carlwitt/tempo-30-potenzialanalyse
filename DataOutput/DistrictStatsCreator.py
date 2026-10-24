@@ -68,6 +68,7 @@ class DistrictStatsCreator:
         streets: gpd.GeoDataFrame,
         facilities: dict[str, gpd.GeoDataFrame] | None = None,
         gap_streets: gpd.GeoDataFrame | None = None,
+        conditional_gap_street_ids: set[int] | None = None,
     ) -> gpd.GeoDataFrame:
         """Count markers, facilities and gap segments by district."""
         result = districts.to_crs("EPSG:4326").copy()
@@ -99,6 +100,16 @@ class DistrictStatsCreator:
         for district, _ in DistrictStatsCreator._assigned_features(result, gap_streets):
             gap_counts[district] += 1
         result["gap_potential"] = [gap_counts[index] for index in result.index]
+        conditional_gap_streets = None
+        if gap_streets is not None and conditional_gap_street_ids:
+            conditional_gap_streets = gap_streets.loc[
+                gap_streets["osm_id"].isin(conditional_gap_street_ids)
+            ]
+        conditional_counts = {index: 0 for index in result.index}
+        for district, _ in DistrictStatsCreator._assigned_features(result, conditional_gap_streets):
+            conditional_counts[district] += 1
+        result["gap_conditional_potential"] = [conditional_counts[index] for index in result.index]
+        result["gap_direct_potential"] = result["gap_potential"] - result["gap_conditional_potential"]
 
         # Gaps describe road segments, not a stock of covered/uncovered objects.
         result["all_types_total"] = result[[f"{name}_total" for name in layers]].sum(axis=1)

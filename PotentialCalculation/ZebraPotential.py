@@ -72,5 +72,12 @@ class ZebraPotential:
         # -----------------------------
         street_ids = joined["osm_id"].drop_duplicates().tolist()
         zebra_ids = joined["zebra_id"].drop_duplicates().tolist()
+        source_street_pairs = list(
+            joined[["zebra_id", "osm_id"]].drop_duplicates().itertuples(index=False, name=None)
+        )
 
-        return PotentialCalculationResult(street_ids = street_ids, opt_source_ids = zebra_ids)
+        return PotentialCalculationResult(
+            street_ids=street_ids,
+            opt_source_ids=zebra_ids,
+            source_street_pairs=source_street_pairs,
+        )
