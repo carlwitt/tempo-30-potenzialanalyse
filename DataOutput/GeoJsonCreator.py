@@ -11,6 +11,7 @@ from DataOutput.DistrictStatsCreator import DistrictStatsCreator
 from DataOutput.FacilityStreetSegments import FacilityStreetSegments
 from DataOutput.OSMVerificationMetadata import OSMVerificationMetadata
 from DataOutput.PlaygroundConsolidation import PlaygroundConsolidation
+from DataOutput.PotentialStreetConsolidation import PotentialStreetConsolidation
 from DataOutput.PotentialReasonAnnotator import PotentialReasonAnnotator
 from DataOutput.StreetImageryLinkCreator import StreetImageryLinkCreator
 from DataOutput.ZebraCrossingSimplifier import ZebraCrossingSimplifier
@@ -28,7 +29,9 @@ class GeoJsonCreator:
         export_data_dict = {}
 
         export_data_dict["zebra"] = zebra_gdf.copy()
-        export_data_dict["potential_streets"] = streets_with_potential.copy()
+        export_data_dict["potential_streets"] = PotentialStreetConsolidation.filter_short_isolated(
+            streets_with_potential
+        )
         export_data_dict["streets_and_limit"] = streets_w_limit_gdf.copy()
 
         for key, data in building_data.items():
@@ -87,6 +90,8 @@ class GeoJsonCreator:
             "name",
             "maxspeed_class",
             "feature_type",
+            "logical_segment_length_m",
+            "logical_segment_way_count",
             "is_conditional_gap",
             "gap_required_potentials",
             "gap_required_potential_types",
