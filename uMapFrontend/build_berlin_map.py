@@ -9,6 +9,44 @@ HERE = Path(__file__).resolve().parent
 BACKUP = HERE / "umap_backup_tempo-30-potenziale-berlin.umap"
 OUTPUT = HERE / "tempo-30-potenziale-berlin.umap"
 REMOTE_BASE = "https://tempo-30.adfc-berlin.de/uMap"
+FACILITY_POPUP = "{popup_content}"
+
+FACILITY_CAVEAT = (
+    " Nach der VwV-StVO setzt dies einen direkten Straßenzugang oder starken Ziel- und "
+    "Quellverkehr im Nahbereich voraus; die Anordnung ist auf den unmittelbaren Bereich "
+    "und insgesamt höchstens 300 m zu begrenzen."
+)
+
+INDICATOR_DESCRIPTIONS = {
+    "Spielplätze": (
+        "Spielplätze gelten seit der StVO-Novelle als neu aufgenommene privilegierte Orte "
+        "zum besonderen Schutz von Kindern. Gemäß § 45 Abs. 9 Satz 4 Nr. 6 StVO kann "
+        "im unmittelbaren Bereich erleichtert Tempo 30 angeordnet werden, ohne dass eine "
+        "qualifizierte Gefahrenlage nachgewiesen werden muss."
+        + FACILITY_CAVEAT
+    ),
+    "Zebrastreifen": (
+        "Im unmittelbaren Bereich von Fußgängerüberwegen kann gemäß § 45 Abs. 9 Satz 4 "
+        "Nr. 6 StVO erleichtert eine streckenbezogene Beschränkung auf Tempo 30 "
+        "angeordnet werden, ohne dass eine qualifizierte Gefahrenlage nachgewiesen werden "
+        "muss. Nach der VwV-StVO ist die Anordnung auf insgesamt höchstens 300 m zu begrenzen; "
+        "die konkrete Situation ist zu prüfen."
+    ),
+    "Einrichtungen für Menschen mit Behinderung": (
+        "Einrichtungen für Menschen mit Behinderung, etwa Wohnheime, Tagesstätten oder "
+        "Werkstätten, sind seit der Reform ausdrücklich als sensible Orte benannt. Gemäß "
+        "§ 45 Abs. 9 Satz 4 Nr. 6 StVO kann im unmittelbaren Bereich erleichtert Tempo 30 "
+        "angeordnet werden, ohne dass eine qualifizierte Gefahrenlage nachgewiesen werden muss."
+        + FACILITY_CAVEAT
+    ),
+    "Krankenhäuser": (
+        "Krankenhäuser sind als sensible Gesundheitseinrichtungen im Ausnahmenkatalog "
+        "genannt. Gemäß § 45 Abs. 9 Satz 4 Nr. 6 StVO kann im unmittelbaren Bereich "
+        "erleichtert Tempo 30 angeordnet werden, ohne dass eine qualifizierte Gefahrenlage "
+        "nachgewiesen werden muss."
+        + FACILITY_CAVEAT
+    ),
+}
 
 
 def fields(*items):
@@ -60,18 +98,18 @@ def complete_indicators(indicators):
         "Spielplätze": fields(("osm_id", "Number"), ("name", "String"),
                               ("facility_type", "String"), ("potential_candidate", "Boolean"),
                               ("matched_street_count", "Number"), ("covered_street_count", "Number"),
-                              ("description", "Text")),
+                              ("description", "Text"), ("popup_content", "Text")),
         "Zebrastreifen": fields(("display_role", "String"), ("potential_candidate", "Boolean"),
                                ("potential_reason", "String"), ("description", "Text")),
         "Einrichtungen für Menschen mit Behinderung": fields(
             ("osm_id", "Number"), ("name", "String"), ("facility_type", "String"),
             ("facility_status", "String"), ("potential_candidate", "Boolean"),
             ("matched_street_count", "Number"), ("covered_street_count", "Number"),
-            ("description", "Text")),
+            ("description", "Text"), ("popup_content", "Text")),
         "Krankenhäuser": fields(("osm_id", "Number"), ("name", "String"),
                                ("facility_type", "String"), ("potential_candidate", "Boolean"),
                                ("matched_street_count", "Number"), ("covered_street_count", "Number"),
-                               ("description", "Text")),
+                               ("description", "Text"), ("popup_content", "Text")),
     }
 
     # Preserve the backup's four styled layers, while matching their field
@@ -79,7 +117,11 @@ def complete_indicators(indicators):
     for layer in layers:
         props = layer["properties"]
         props["fields"] = current_fields[props["name"]]
-        props["popupContentTemplate"] = "{description}"
+        props["description"] = INDICATOR_DESCRIPTIONS[props["name"]]
+        if props["name"] != "Zebrastreifen":
+            props["popupContentTemplate"] = FACILITY_POPUP
+        else:
+            props["popupContentTemplate"] = "{description}"
         if props["name"] == "Zebrastreifen":
             props.update({"stroke": True, "iconClass": "Circle", "weight": 4})
 
@@ -92,8 +134,18 @@ def complete_indicators(indicators):
                        "properties": {"color": "#d7191c", "fillOpacity": 0.7}}],
             "fields": fields(("name", "String"), ("facility_type", "String"),
                              ("potential_candidate", "Boolean"), ("matched_street_count", "Number"),
-                             ("covered_street_count", "Number"), ("description", "Text")),
-            "description": "OSM-Schulen und Kitas; Rot markiert offene Tempo-30-Prüffälle.",
+                             ("covered_street_count", "Number"), ("description", "Text"),
+                             ("popup_content", "Text")),
+            "popupContentTemplate": FACILITY_POPUP,
+            "description": (
+                "Bildungseinrichtungen umfassen hier OSM-Schulen und Kitas. Gemäß § 45 Abs. 9 "
+                "Satz 4 Nr. 6 StVO kann im unmittelbaren Bereich allgemeinbildender Schulen, "
+                "Förderschulen und Kindertagesstätten erleichtert Tempo 30 angeordnet werden, "
+                "ohne dass eine qualifizierte Gefahrenlage nachgewiesen werden muss."
+                + FACILITY_CAVEAT
+                + " Hochfrequentierte Schulwege sind ebenfalls gesetzlich genannt, werden "
+                  "aber in diesem Einrichtungs-Layer nicht erfasst."
+            ),
         },
     )
     elderly = remote_layer(
@@ -105,8 +157,17 @@ def complete_indicators(indicators):
                        "properties": {"color": "#d7191c", "fillOpacity": 0.7}}],
             "fields": fields(("name", "String"), ("facility_type", "String"),
                              ("potential_candidate", "Boolean"), ("matched_street_count", "Number"),
-                             ("covered_street_count", "Number"), ("description", "Text")),
-            "description": "OSM-Senioren- und Pflegeeinrichtungen; Rot markiert offene Prüffälle.",
+                             ("covered_street_count", "Number"), ("description", "Text"),
+                             ("popup_content", "Text")),
+            "popupContentTemplate": FACILITY_POPUP,
+            "description": (
+                "Alten- und Pflegeheime zählen als sensible soziale Einrichtungen zum Schutz "
+                "vulnerabler und mobilitätseingeschränkter Menschen. Gemäß § 45 Abs. 9 Satz 4 "
+                "Nr. 6 StVO in Verbindung mit der VwV-StVO ist im unmittelbaren Bereich in der "
+                "Regel Tempo 30 vorgesehen, ohne Nachweis einer qualifizierten Gefahrenlage."
+                + FACILITY_CAVEAT
+                + " Die OSM-Kennzeichnung einer einzelnen Einrichtung ist vor Ort zu prüfen."
+            ),
         },
     )
     layers.extend([education, elderly])
@@ -166,7 +227,8 @@ def context_layers():
             "iconClass": "Circle", "circles": {"radius": {"min": 7}},
             "fields": fields(("name", "String"), ("facility_type", "String"),
                              ("facility_status", "String"), ("potential_candidate", "Boolean"),
-                             ("description", "Text")),
+                             ("description", "Text"), ("popup_content", "Text")),
+            "popupContentTemplate": FACILITY_POPUP,
             "description": "Nicht als bestätigtes Behinderten-Potenzial gewertete OSM-Einrichtungen; Typ und Zielgruppe prüfen.",
         },
     )

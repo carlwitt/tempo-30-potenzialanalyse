@@ -59,6 +59,27 @@ class BerlinUMapTests(unittest.TestCase):
         self.assertNotIn("analysis_scope", types)
         self.assertNotIn("categorized", props)
 
+    def test_facility_layers_use_compact_popup_and_legal_descriptions(self):
+        layers = list(self.leaves(self.generated["layers"]))
+        facility_names = {
+            "Spielplätze", "Einrichtungen für Menschen mit Behinderung",
+            "Krankenhäuser", "Schulen und Kitas", "Senioren- und Pflegeeinrichtungen",
+            "Behinderteneinrichtungen – ungeklärt",
+        }
+        for layer in layers:
+            props = layer["properties"]
+            if props["name"] in facility_names:
+                self.assertEqual(props["popupContentTemplate"], "{popup_content}")
+                self.assertIn({"key": "popup_content", "type": "Text"}, props["fields"])
+
+        indicators = {layer["properties"]["name"]: layer["properties"]
+                      for layer in self.generated["layers"][0]["layers"]}
+        for name in facility_names - {"Behinderteneinrichtungen – ungeklärt"}:
+            self.assertIn("§ 45 Abs. 9 Satz 4 Nr. 6 StVO", indicators[name]["description"])
+        self.assertIn("werden aber in diesem Einrichtungs-Layer nicht erfasst",
+                      indicators["Schulen und Kitas"]["description"])
+        self.assertIn("Nr. 6 StVO", indicators["Zebrastreifen"]["description"])
+
 
 if __name__ == "__main__":
     unittest.main()
