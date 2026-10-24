@@ -17,6 +17,7 @@ from SpeedAnnotationUpdater import SpeedAnnotationUpdater
 from BoundingBoxStorage import BoundingBoxStorage
 
 from DataOutput.GeoJsonCreator import GeoJsonCreator
+from DataOutput.AccidentAtlasExport import AccidentAtlasExport
 from DataOutput.PrintOutput import PrintOutput
 from DataOutput.StreetPlot import StreetPlot
 
@@ -164,6 +165,9 @@ GeoJsonCreator.create_geojson_layer_files(folder_name = area_under_creation, str
                                           districts_gdf = districts_gdf, gap_street_ids = potential_results["gap"].street_ids,
                                           main_entrances_gdf = main_entrances_gdf,
                                           potential_results = potential_results)
+
+if area_under_creation.lower() == "berlin":
+    print(f"Berlin injury accidents by year: {AccidentAtlasExport.export()}")
 
 
 # Plotting
