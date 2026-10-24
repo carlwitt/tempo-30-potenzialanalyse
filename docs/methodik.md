@@ -17,7 +17,7 @@ Im Export `potential_streets.geojson` werden Potenzial-Ways gleichen Straßennam
 - Spielplätze: Potenzialberechnung auf den getaggten Quellobjekten; die Kartenansicht behält Polygone und nur potenzielle Punkteinträge. Die Statistik berücksichtigt nur Spielplätze bis 20 m an einer kartierten Straße. Sichtbare Features und statistische Grundgesamtheit sind deshalb nicht identisch.
 - Zebrastreifen: Stützpunkte rekursiv abgefragter OSM-Ways werden nicht als eigene Überwege interpretiert. Benachbarte, hinreichend parallele Teil-Ways werden zu einem Segment plus einem Mittelpunkt-Marker zusammengefasst. Überwege, die in OSM nur als Punkt erfasst sind, bleiben Marker ohne Segment. Jede Zusammenfassung ist heuristisch und sollte bei Zweifeln am OSM-Objekt geprüft werden.
 
-OSM-Namen, alternative/offizielle Namen, Betreiber und Typ-Tags werden in den Einrichtungs-Popups angezeigt, sofern sie erfasst sind. Der Link „OSM-Objekt prüfen“ führt zum Quellobjekt. Ein generischer Name wie „Soziale Schreibwerkstatt“ ist kein Nachweis für eine bestimmte Zielgruppe.
+Die Berlin-uMap-Konfiguration nutzt für Einrichtungen den kompakten Exporttext `popup_content`: Der Titel verlinkt das OSM-Objekt; vorhandene Namensvarianten und Betreiber folgen, dann bei offenen Kandidaten Typ, Begründung und verknüpfte Straßenabschnitte sowie abschließend Street-View- und Mapillary-Links in einer Zeile. Das ausführlichere Feld `description` enthält weitere OSM-Prüfangaben. Ein fehlender Betreiber erzeugt keine leere Popup-Zeile. Ein generischer Name wie „Soziale Schreibwerkstatt“ ist kein Nachweis für eine bestimmte Zielgruppe.
 
 ## Konkrete Straßenabschnitte und Bildlinks
 

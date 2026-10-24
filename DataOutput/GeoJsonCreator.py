@@ -8,6 +8,7 @@ import geopandas as gpd
 from DataOutput.AdjacentCoveredSegments import AdjacentCoveredSegments
 from DataOutput.ConditionalGapMetadata import ConditionalGapMetadata
 from DataOutput.DistrictStatsCreator import DistrictStatsCreator
+from DataOutput.FacilityPopupCreator import FacilityPopupCreator
 from DataOutput.FacilityStreetSegments import FacilityStreetSegments
 from DataOutput.OSMVerificationMetadata import OSMVerificationMetadata
 from DataOutput.PlaygroundConsolidation import PlaygroundConsolidation
@@ -181,6 +182,11 @@ class GeoJsonCreator:
                 export_data_dict[building_type], export_data_dict["streets_and_limit"],
                 main_entrances=main_entrances_gdf,
                 use_area_entrances=building_type != "playgrounds",
+            )
+            export_data_dict[building_type] = FacilityPopupCreator.create(
+                export_data_dict[building_type], building_type,
+                export_data_dict["facility_street_segments"],
+                export_data_dict["facility_covered_street_segments"],
             )
             export_data_dict[building_type] = export_data_dict[building_type].drop(columns="osm_node_ids")
 

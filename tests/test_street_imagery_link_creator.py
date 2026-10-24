@@ -38,6 +38,11 @@ class StreetImageryLinkCreatorTests(unittest.TestCase):
             mapillary = f"[[https://www.mapillary.com/app/?lat={point.y:.7f}&lng={point.x:.7f}&z=17&dateFrom=2024-01-01|Mapillary]]"
             links.append(f"{street_view}\n{mapillary}")
         self.assertEqual(result.description.tolist(), [f"Existing note\n{links[0]}", links[1], links[2]])
+        self.assertEqual(
+            result.google_street_view_url.iloc[0],
+            f"https://www.google.com/maps/@?api=1&map_action=pano&viewpoint={snapped.iloc[0].y:.7f}%2C{snapped.iloc[0].x:.7f}",
+        )
+        self.assertIn("dateFrom=2024-01-01", result.mapillary_url.iloc[0])
         self.assertTrue(result.geometry.equals(features.geometry))
         self.assertEqual(result.crs, features.crs)
         self.assertEqual(features.description.iloc[0], "Existing note")

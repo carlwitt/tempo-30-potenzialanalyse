@@ -26,6 +26,8 @@ class StreetImageryLinkCreator:
         result = features.copy()
         if result.empty:
             result["description"] = []
+            result["google_street_view_url"] = []
+            result["mapillary_url"] = []
             if main_entrances is not None:
                 result["imagery_reference"] = []
             return result
@@ -80,9 +82,13 @@ class StreetImageryLinkCreator:
 
         descriptions = result["description"] if "description" in result else [None] * len(result)
         popup_text = []
+        street_view_urls = []
+        mapillary_urls = []
         for description, point, reference in zip(descriptions, viewpoints, references):
             street_view_url = f"https://www.google.com/maps/@?api=1&map_action=pano&viewpoint={point.y:.7f}%2C{point.x:.7f}"
             mapillary_url = f"https://www.mapillary.com/app/?lat={point.y:.7f}&lng={point.x:.7f}&z=17&dateFrom={mapillary_since.isoformat()}"
+            street_view_urls.append(street_view_url)
+            mapillary_urls.append(mapillary_url)
             links = f"[[{street_view_url}|Google Street View]]\n[[{mapillary_url}|Mapillary]]"
             if main_entrances is not None:
                 links = f"Bildstandort: {reference}\n{links}"
@@ -90,6 +96,8 @@ class StreetImageryLinkCreator:
                 links = f"{description.strip()}\n{links}"
             popup_text.append(links)
         result["description"] = popup_text
+        result["google_street_view_url"] = street_view_urls
+        result["mapillary_url"] = mapillary_urls
         if main_entrances is not None:
             result["imagery_reference"] = references
         return result
