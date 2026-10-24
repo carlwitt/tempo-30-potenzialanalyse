@@ -30,9 +30,7 @@ class GeoJsonCreator:
         export_data_dict = {}
 
         export_data_dict["zebra"] = zebra_gdf.copy()
-        export_data_dict["potential_streets"] = PotentialStreetConsolidation.filter_short_isolated(
-            streets_with_potential
-        )
+        export_data_dict["potential_streets"] = streets_with_potential.copy()
         export_data_dict["streets_and_limit"] = streets_w_limit_gdf.copy()
 
         for key, data in building_data.items():
@@ -55,16 +53,25 @@ class GeoJsonCreator:
                 "T30_Potenzial_Behinderteneinrichtung": "Potenzial durch Behinderteneinrichtung",
                 "T30_Potenzial_Multifaktor" : "Potenzial durch mehrere Faktoren"
             })
+        gap_result = (potential_results or {}).get("gap")
+        export_data_dict["potential_streets"] = ConditionalGapMetadata.annotate(
+            export_data_dict["potential_streets"], gap_result, potential_results or {},
+            {"zebra": zebra_gdf, **building_data},
+        )
+        export_data_dict["potential_streets"] = PotentialStreetConsolidation.filter_short_isolated(
+            export_data_dict["potential_streets"]
+        )
+        export_data_dict["potential_streets"] = PotentialStreetConsolidation.consolidate_conditional_gaps(
+            export_data_dict["potential_streets"], streets_w_limit_gdf
+        )
         export_data_dict["potential_streets"] = FacilityStreetSegments.annotate_potential_streets(
             export_data_dict["potential_streets"], export_data_dict["facility_street_segments"]
         )
         export_data_dict["potential_streets"] = AdjacentCoveredSegments.annotate_potential_streets(
             export_data_dict["potential_streets"], export_data_dict["facility_covered_street_segments"]
         )
-        gap_result = (potential_results or {}).get("gap")
-        export_data_dict["potential_streets"] = ConditionalGapMetadata.annotate(
-            export_data_dict["potential_streets"], gap_result, potential_results or {},
-            {"zebra": zebra_gdf, **building_data},
+        export_data_dict["potential_streets"] = ConditionalGapMetadata.render_popups(
+            export_data_dict["potential_streets"], streets_w_limit_gdf
         )
 
         # Bundle speed limits
@@ -93,7 +100,10 @@ class GeoJsonCreator:
             "feature_type",
             "logical_segment_length_m",
             "logical_segment_way_count",
+            "source_osm_ids",
             "is_conditional_gap",
+            "gap_length_current_m",
+            "gap_length_after_m",
             "gap_required_potentials",
             "gap_required_potential_types",
             "gap_required_street_osm_ids",

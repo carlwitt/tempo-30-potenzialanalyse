@@ -48,10 +48,10 @@ class FacilityStreetSegments:
                         "distance_m": distance,
                         "street_osm_url": street_url,
                         "description": (
-                            f"Tempo-30-Prüfabschnitt (OSM-Way innerhalb 20 m der Einrichtung)\n"
+                            f"Tempo-30-Prüfabschnitt (innerhalb 20 m der Einrichtung)\n"
                             f"Straße: {name}\nAktuell laut OSM: {speed} km/h\n"
                             f"Anlass: {facility_name}\nAbstand zur Einrichtung: {distance:.1f} m\n"
-                            f"[[{street_url}|Vollständigen OSM-Way prüfen]]\n"
+                            f"[[{street_url}|Vollständigen OSM-Abschnitt prüfen]]\n"
                             f"[[{facility['osm_url']}|Einrichtung prüfen]]"
                         ),
                         "geometry": part,
@@ -79,7 +79,7 @@ class FacilityStreetSegments:
             lines = [feature["description"]]
             roads = matched.get(feature["osm_id"], [])
             if roads:
-                lines.append("Tempo-30-Prüfabschnitte (OSM-Ways):")
+                lines.append("Tempo-30-Prüfabschnitte:")
                 for road in roads:
                     lines.append(
                         f"[[{road['street_osm_url']}|{road['street_name']}]] — "
@@ -106,8 +106,13 @@ class FacilityStreetSegments:
         descriptions = []
         for _, street in result.iterrows():
             name = street["name"] if pd.notna(street["name"]) else "Straße ohne OSM-Namen"
-            lines = [f"Straße: {name}", f"Aktuell laut OSM: {street['maxspeed_class']} km/h"]
-            facilities = matched.get(street["osm_id"], [])
+            street_url = f"https://www.openstreetmap.org/way/{street['osm_id']}"
+            lines = [f"Straße: [[{street_url}|{name}]]",
+                     f"Höchstgeschwindigkeit: {street['maxspeed_class']} km/h"]
+            source_ids = street.get("source_osm_ids") or [street["osm_id"]]
+            facilities = list({(facility["facility_layer"], facility["facility_id"]): facility
+                               for source_id in source_ids
+                               for facility in matched.get(source_id, [])}.values())
             if facilities:
                 lines.append("Nahe Einrichtungen:")
                 for facility in facilities:
@@ -115,7 +120,6 @@ class FacilityStreetSegments:
                         f"[[{facility['facility_osm_url']}|{facility['facility_name']}]] "
                         f"({facility['distance_m']:.1f} m)"
                     )
-            lines.append(f"[[https://www.openstreetmap.org/way/{street['osm_id']}|OSM-Straßenway prüfen]]")
-            descriptions.append("\n".join(lines))
+            descriptions.append("\n\n".join(lines))
         result["description"] = descriptions
         return result

@@ -71,6 +71,45 @@ class PotentialStreetConsolidationTests(unittest.TestCase):
         self.assertEqual(result.crs, streets.crs)
         self.assertIn("logical_segment_way_count", result.columns)
 
+    def test_short_connector_is_merged_into_long_conditional_gap(self):
+        streets = self.streets([
+            (1, "A", 0, 60, 0), (2, "A", 60, 77, 0),
+            (3, "A", 77, 147, 0),
+        ])
+        option = {"potential_type": "zebra", "anchor_street_osm_id": 4,
+                  "source_objects": [{"name": "Zebrastreifen", "osm_url": "https://www.openstreetmap.org/node/5"}]}
+        streets["is_conditional_gap"] = True
+        streets["gap_required_potentials"] = [[[option]]] * 3
+        streets["maxspeed_class"] = "50"
+        anchor = self.streets([(4, "A", 147, 187, 0)])
+
+        filtered = PotentialStreetConsolidation.filter_short_isolated(streets)
+        result = PotentialStreetConsolidation.consolidate_conditional_gaps(filtered, anchor)
+
+        self.assertEqual(filtered.osm_id.tolist(), [1, 2, 3])
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result.source_osm_ids.iloc[0], [1, 2, 3])
+        self.assertEqual(result.logical_segment_length_m.iloc[0], 147.0)
+        self.assertEqual(result.gap_length_after_m.iloc[0], 147.0)
+        self.assertEqual(result.gap_length_current_m.iloc[0], 187.0)
+        self.assertEqual(round(result.geometry.iloc[0].length, 1), 147.0)
+
+    def test_conditional_sections_with_different_anchors_stay_separate(self):
+        streets = self.streets([(1, "A", 0, 60, 0), (2, "A", 60, 120, 0)])
+        streets["is_conditional_gap"] = True
+        streets["gap_required_potentials"] = [
+            [[{"potential_type": "zebra", "anchor_street_osm_id": anchor}]]
+            for anchor in (3, 4)
+        ]
+        streets["maxspeed_class"] = "50"
+        anchors = self.streets([(3, "A", -40, 0, 0), (4, "A", 120, 160, 0)])
+
+        filtered = PotentialStreetConsolidation.filter_short_isolated(streets)
+        result = PotentialStreetConsolidation.consolidate_conditional_gaps(filtered, anchors)
+
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result.source_osm_ids.tolist(), [[1], [2]])
+
     def test_same_name_elsewhere_does_not_rescue_short_way(self):
         streets = self.streets([(1, "A", 0, 30, 0), (2, "A", 100, 130, 0)])
 

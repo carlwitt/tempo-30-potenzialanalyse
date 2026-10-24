@@ -125,6 +125,7 @@ class ConditionalGapTests(unittest.TestCase):
         annotated = ConditionalGapMetadata.annotate(
             streets, gap_result, potentials, {"playgrounds": playgrounds}
         )
+        annotated = ConditionalGapMetadata.render_popups(annotated, self._streets(["30", "50", "50"]))
 
         self.assertEqual(annotated.is_conditional_gap.tolist(), [True])
         self.assertEqual(annotated.gap_required_potential_types.tolist(), ["Spielplatz"])
@@ -137,6 +138,45 @@ class ConditionalGapTests(unittest.TestCase):
         exported = json.loads(annotated.to_json())["features"][0]["properties"]
         self.assertIs(exported["is_conditional_gap"], True)
         self.assertEqual(exported["gap_required_potentials"][0][0]["potential_type"], "playgrounds")
+
+    def test_conditional_popup_uses_one_source_link_and_named_anchor(self):
+        streets = self._streets(["30", "50", "50"])
+        potential = streets.loc[streets.osm_id == 20].assign(
+            description="Straße: [[https://www.openstreetmap.org/way/20|Teststraße]]"
+        )
+        gap_result = PotentialCalculationResult(
+            [20], conditional_gap_dependencies={20: [[("zebra", 30)]]}
+        )
+        zebras = gpd.GeoDataFrame(
+            {"osm_id": [7, 8], "element_type": ["node", "way"],
+             "name": [None, None],
+             "osm_url": ["https://www.openstreetmap.org/node/7",
+                         "https://www.openstreetmap.org/way/8"]},
+            geometry=[Point(390200, 5820000), Point(390201, 5820000)], crs="EPSG:25832",
+        )
+        potentials = {"zebra": PotentialCalculationResult([30], [7, 8], [(7, 30), (8, 30)])}
+
+        annotated = ConditionalGapMetadata.annotate(potential, gap_result, potentials, {"zebra": zebras})
+        annotated["gap_length_current_m"] = 140.0
+        annotated["gap_length_after_m"] = 100.0
+        rendered = ConditionalGapMetadata.render_popups(annotated, streets)
+        popup = rendered.description.iloc[0]
+
+        self.assertIn("Lückenschluss zur [[https://www.openstreetmap.org/way/30|Teststraße]]", popup)
+        self.assertIn("am [[https://www.openstreetmap.org/node/7|Zebrastreifen]]", popup)
+        self.assertNotIn("https://www.openstreetmap.org/way/8", popup)
+        self.assertIn("Länge der Lücke aktuell: ca. 140,0 m", popup)
+        self.assertIn("Länge der Lücke nach Anordnung: ca. 100,0 m", popup)
+        self.assertIn("\n\n", popup)
+
+    def test_unnamed_anchor_uses_readable_fallback(self):
+        option = {"potential_type": "zebra", "anchor_street_osm_id": 30,
+                  "source_objects": [{"name": "Zebrastreifen",
+                                      "osm_url": "https://www.openstreetmap.org/node/7"}]}
+
+        _, sentence = ConditionalGapMetadata._option_sentence(option, {30: float("nan")})
+
+        self.assertIn("auf dem Straßenabschnitt [[https://www.openstreetmap.org/way/30|OSM-Abschnitt 30]]", sentence)
 
 
 if __name__ == "__main__":

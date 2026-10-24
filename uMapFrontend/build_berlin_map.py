@@ -177,7 +177,7 @@ def complete_indicators(indicators):
 
 def street_layers():
     potential = remote_layer(
-        "potential_streets", "Straßen-Ways mit Tempo-30-Potenzial", color="#d7191c", on_load=True,
+        "potential_streets", "Straßenabschnitte mit Tempo-30-Potenzial", color="#d7191c", on_load=True,
         extra={
             "weight": 5, "opacity": 0.85,
             "rules": [{"name": "Bedingter Lückenschluss", "condition": "is_conditional_gap=true",
@@ -187,8 +187,10 @@ def street_layers():
                              ("is_conditional_gap", "Boolean"),
                              ("logical_segment_length_m", "Number"),
                              ("logical_segment_way_count", "Number"),
+                             ("gap_length_current_m", "Number"),
+                             ("gap_length_after_m", "Number"),
                              ("gap_required_potential_types", "String"), ("description", "Text")),
-            "description": "Offene OSM-Straßenways; violett gestrichelt markiert einen Lückenschluss, der erst nach anderen Maßnahmen möglich wäre. Einzelne Ways bis 20 m und danach isolierte Abschnitte bis 50 m sind im Export ausgeblendet.",
+            "description": "Straßenabschnitte mit offenem Tempo-30-Potenzial; violett gestrichelt markiert bedingte Lückenschlüsse. Benachbarte Abschnitte mit denselben Voraussetzungen sind zusammengefasst; isolierte kurze Abschnitte werden ausgeblendet.",
         },
     )
     proposed = remote_layer(
@@ -245,8 +247,8 @@ def context_layers():
             ],
             "fields": fields(("osm_id", "Number"), ("name", "String"),
                              ("maxspeed_class", "String")),
-            "popupContentTemplate": "# {name}\nOSM-Geschwindigkeitsklasse: {maxspeed_class}\n[[https://www.openstreetmap.org/way/{osm_id}|OSM-Straßenway prüfen]]",
-            "description": "OSM-Grundklassen aller Straßen-Ways. Rund 55 MB; deshalb standardmäßig ausgeschaltet.",
+            "popupContentTemplate": "# {name}\nOSM-Geschwindigkeitsklasse: {maxspeed_class}\n[[https://www.openstreetmap.org/way/{osm_id}|OSM-Straßenabschnitt prüfen]]",
+            "description": "OSM-Grundklassen aller Straßenabschnitte. Rund 55 MB; deshalb standardmäßig ausgeschaltet.",
         },
     )
     return group("OSM-Kontext und Prüffälle", [review, speeds], rank=3)

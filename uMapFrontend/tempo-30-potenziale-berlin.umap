@@ -517,7 +517,7 @@
           "type": "FeatureCollection",
           "features": [],
           "properties": {
-            "name": "Straßen-Ways mit Tempo-30-Potenzial",
+            "name": "Straßenabschnitte mit Tempo-30-Potenzial",
             "type": "Default",
             "color": "#d7191c",
             "browsable": true,
@@ -573,6 +573,14 @@
                 "type": "Number"
               },
               {
+                "key": "gap_length_current_m",
+                "type": "Number"
+              },
+              {
+                "key": "gap_length_after_m",
+                "type": "Number"
+              },
+              {
                 "key": "gap_required_potential_types",
                 "type": "String"
               },
@@ -581,7 +589,7 @@
                 "type": "Text"
               }
             ],
-            "description": "Offene OSM-Straßenways; violett gestrichelt markiert einen Lückenschluss, der erst nach anderen Maßnahmen möglich wäre. Einzelne Ways bis 20 m und danach isolierte Abschnitte bis 50 m sind im Export ausgeblendet."
+            "description": "Straßenabschnitte mit offenem Tempo-30-Potenzial; violett gestrichelt markiert bedingte Lückenschlüsse. Benachbarte Abschnitte mit denselben Voraussetzungen sind zusammengefasst; isolierte kurze Abschnitte werden ausgeblendet."
           },
           "rank": 0
         },
@@ -952,7 +960,7 @@
               "format": "geojson",
               "dynamic": false
             },
-            "popupContentTemplate": "# {name}\nOSM-Geschwindigkeitsklasse: {maxspeed_class}\n[[https://www.openstreetmap.org/way/{osm_id}|OSM-Straßenway prüfen]]",
+            "popupContentTemplate": "# {name}\nOSM-Geschwindigkeitsklasse: {maxspeed_class}\n[[https://www.openstreetmap.org/way/{osm_id}|OSM-Straßenabschnitt prüfen]]",
             "weight": 2,
             "opacity": 0.5,
             "rules": [
@@ -994,7 +1002,7 @@
                 "type": "String"
               }
             ],
-            "description": "OSM-Grundklassen aller Straßen-Ways. Rund 55 MB; deshalb standardmäßig ausgeschaltet."
+            "description": "OSM-Grundklassen aller Straßenabschnitte. Rund 55 MB; deshalb standardmäßig ausgeschaltet."
           },
           "rank": 1
         }

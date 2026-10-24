@@ -94,6 +94,14 @@ class BerlinUMapTests(unittest.TestCase):
         self.assertEqual(generated["weight"], 4)
         self.assertEqual(generated["remoteData"]["url"], original["remoteData"]["url"])
 
+    def test_street_layer_uses_section_name_and_numeric_gap_lengths(self):
+        potential = self.generated["layers"][1]["layers"][0]["properties"]
+        types = {field["key"]: field["type"] for field in potential["fields"]}
+
+        self.assertEqual(potential["name"], "Straßenabschnitte mit Tempo-30-Potenzial")
+        self.assertEqual(types["gap_length_current_m"], "Number")
+        self.assertEqual(types["gap_length_after_m"], "Number")
+
 
 if __name__ == "__main__":
     unittest.main()

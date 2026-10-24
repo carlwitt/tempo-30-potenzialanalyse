@@ -188,7 +188,7 @@ class AdjacentCoveredSegments:
                 f"{condition_line}"
                 f"Entfernung entlang der Straße vom Einrichtungsbezugspunkt: "
                 f"{record['distance_start_m']:.1f}–{record['distance_end_m']:.1f} m\n"
-                f"[[{record['street_osm_url']}|OSM-Straßenway prüfen]]\n"
+                f"[[{record['street_osm_url']}|OSM-Straßenabschnitt prüfen]]\n"
                 f"[[{record['facility_osm_url']}|Einrichtung prüfen]]"
             )
         result = gpd.GeoDataFrame(records.values(), columns=columns, geometry="geometry", crs="EPSG:25832")
@@ -226,7 +226,9 @@ class AdjacentCoveredSegments:
         descriptions = []
         for _, street in result.iterrows():
             lines = [street["description"]]
-            roads = matched[street["osm_id"]].values()
+            source_ids = street.get("source_osm_ids") or [street["osm_id"]]
+            roads = {road_id: road for source_id in source_ids
+                     for road_id, road in matched[source_id].items()}.values()
             if roads:
                 lines.append("Angrenzend bereits abgedeckt:")
                 for road in roads:
@@ -235,6 +237,6 @@ class AdjacentCoveredSegments:
                         f"[[{road['street_osm_url']}|{road['street_name']}]] — "
                         f"{road['coverage_status']}{condition}"
                     )
-            descriptions.append("\n".join(line for line in lines if isinstance(line, str)))
+            descriptions.append("\n\n".join(line for line in lines if isinstance(line, str)))
         result["description"] = descriptions
         return result

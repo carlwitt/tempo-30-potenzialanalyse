@@ -48,21 +48,13 @@ class ConditionalGapMetadata:
         required_groups = []
         required_types = []
         required_street_ids = []
-        descriptions = []
 
         for _, street in result.iterrows():
             groups = dependencies.get(street["osm_id"], [])
             is_conditional.append(bool(groups))
             details = []
-            popup = [street["description"]] if isinstance(street["description"], str) else []
-            if groups:
-                popup.append(
-                    "Bedingter Lückenschluss: Mindestens ein Anschluss ist noch kein "
-                    "bestehendes Tempo 30. Erst die folgenden Maßnahmen könnten ihn ermöglichen:"
-                )
-            for group_index, group in enumerate(groups, start=1):
+            for group in groups:
                 options = []
-                popup.append(f"Anschluss {group_index} (eine der Alternativen genügt):")
                 for kind, anchor_id in group:
                     seen = set()
                     objects = []
@@ -71,18 +63,12 @@ class ConditionalGapMetadata:
                             objects.append(source)
                             seen.add(source["osm_url"])
                     label = ConditionalGapMetadata.LABELS.get(kind, kind)
-                    anchor_url = f"https://www.openstreetmap.org/way/{anchor_id}"
                     options.append({
                         "potential_type": kind,
                         "potential_label": label,
                         "anchor_street_osm_id": int(anchor_id),
                         "source_objects": objects,
                     })
-                    popup.append(f"{label}: [[{anchor_url}|OSM-Straßenway {anchor_id}]]")
-                    for source in objects[:3]:
-                        popup.append(f"[[{source['osm_url']}|{source['name']}]]")
-                    if len(objects) > 3:
-                        popup.append(f"… und {len(objects) - 3} weitere OSM-Objekte")
                 details.append(options)
             required_groups.append(details)
             required_types.append(" + ".join(
@@ -91,11 +77,63 @@ class ConditionalGapMetadata:
             required_street_ids.append(sorted({
                 option["anchor_street_osm_id"] for group in details for option in group
             }))
-            descriptions.append("\n".join(popup))
 
         result["is_conditional_gap"] = is_conditional
         result["gap_required_potentials"] = required_groups
         result["gap_required_potential_types"] = required_types
         result["gap_required_street_osm_ids"] = required_street_ids
+        return result
+
+    @staticmethod
+    def _option_sentence(option, street_names):
+        anchor_id = option["anchor_street_osm_id"]
+        anchor_url = f"https://www.openstreetmap.org/way/{anchor_id}"
+        raw_name = street_names.get(anchor_id)
+        anchor_name = str(raw_name).strip() if pd.notna(raw_name) and str(raw_name).strip() else f"OSM-Abschnitt {anchor_id}"
+        anchor = f"[[{anchor_url}|{anchor_name}]]"
+        feminine = anchor_name.lower().endswith(("straße", "strasse", "allee"))
+        heading = f"zur {anchor}" if feminine else f"zum Straßenabschnitt {anchor}"
+        location = f"auf der {anchor}" if feminine else f"auf dem Straßenabschnitt {anchor}"
+        source = (option["source_objects"] or [None])[0]
+        if source:
+            source_link = f"[[{source['osm_url']}|{source['name']}]]"
+            place = f"am {source_link}" if option["potential_type"] == "zebra" else f"bei {source_link}"
+            return heading, f"wenn {place} {location} Tempo 30 angeordnet wird"
+        return heading, f"wenn das Potenzial {location} umgesetzt wird"
+
+    @staticmethod
+    def render_popups(streets: gpd.GeoDataFrame, reference_streets=None):
+        result = streets.copy()
+        street_names = {}
+        if reference_streets is not None:
+            street_names = dict(zip(reference_streets["osm_id"], reference_streets["name"]))
+
+        descriptions = []
+        for _, street in result.iterrows():
+            lines = [street["description"]] if isinstance(street.get("description"), str) else []
+            groups = street["gap_required_potentials"]
+            if groups:
+                if len(groups) == 1 and len(groups[0]) == 1:
+                    heading, condition = ConditionalGapMetadata._option_sentence(groups[0][0], street_names)
+                    lines.append(f"Bedingter Lückenschluss {heading}: Möglich, {condition}.")
+                else:
+                    lines.append("Bedingter Lückenschluss: Möglich nach folgenden Maßnahmen:")
+                    for index, group in enumerate(groups, start=1):
+                        choices = [ConditionalGapMetadata._option_sentence(option, street_names)[1]
+                                   for option in group]
+                        lines.append(f"Anschluss {index} (eine Alternative genügt): " + " oder ".join(choices) + ".")
+
+                current = street.get("gap_length_current_m")
+                after = street.get("gap_length_after_m")
+                if pd.notna(current):
+                    current_text = f"{current:.1f}".replace(".", ",")
+                    lines.append(f"Länge der Lücke aktuell: ca. {current_text} m")
+                if pd.notna(after):
+                    after_text = f"{after:.1f}".replace(".", ",")
+                    lines.append(f"Länge der Lücke nach Anordnung: ca. {after_text} m")
+                if pd.notna(current) and pd.notna(after):
+                    lines.append("OSM-Näherung: Der gesamte Anschlussabschnitt wird als künftiges Tempo 30 angenommen; Anordnungsgrenzen vor Ort prüfen.")
+            descriptions.append("\n\n".join(lines))
+
         result["description"] = descriptions
         return result
