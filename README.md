@@ -17,6 +17,6 @@ Ohne Argument wird München berechnet. Die GeoJSON-Dateien landen in `GEOJSON_EX
 
 Die wichtigsten Berlin-Layer sind `potential_streets.geojson` (OSM-Straßenways mit Potenzial, einschließlich `is_conditional_gap` und benötigter Vormaßnahmen), `facility_street_segments.geojson` (auf 20 m um eine Einrichtung gekürzte Potenzialabschnitte), `facility_covered_street_segments.geojson` (angrenzende bereits abgedeckte Abschnitte, bis 500 m entlang der Straße), `zebra.geojson` (Überwege als Segment und Marker), die Einrichtungs-Layer sowie `district_stats.geojson`. `streets_and_limit.geojson` zeigt die aus OSM gelesene Geschwindigkeitsklasse. Der Layer `disability_facilities_review.geojson` enthält unbestätigte bzw. anders zugeordnete soziale Einrichtungen und ist kein Potenzial-Layer.
 
-Im Straßen-Potenzial-Layer werden zusammenhängende OSM-Ways gleichen Namens als logischer Abschnitt bewertet. Isolierte Abschnitte bis einschließlich 50 m werden nur aus diesem Export ausgeblendet; die Quellberechnung und Bezirksstatistik bleiben unverändert.
+Im Straßen-Potenzial-Layer entfallen zunächst einzelne OSM-Ways bis einschließlich 20 m. Die übrigen zusammenhängenden Ways gleichen Namens werden als logischer Abschnitt bewertet; Abschnitte bis einschließlich 50 m werden ebenfalls ausgeblendet. Das betrifft nur diesen Export, nicht die Quellberechnung oder Bezirksstatistik.
 
 Methodik, Felddefinitionen und Grenzen stehen in [docs/methodik.md](docs/methodik.md). Die Unit-Tests arbeiten mit kleinen OSM-/Geometrie-Fixtures und benötigen keinen Overpass-Zugriff.

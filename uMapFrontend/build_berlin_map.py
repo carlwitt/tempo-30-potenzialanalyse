@@ -189,7 +189,7 @@ def street_layers():
                              ("logical_segment_length_m", "Number"),
                              ("logical_segment_way_count", "Number"),
                              ("gap_required_potential_types", "String"), ("description", "Text")),
-            "description": "Offene OSM-Straßenways; violett gestrichelt markiert einen Lückenschluss, der erst nach anderen Maßnahmen möglich wäre. Isolierte Abschnitte bis 50 m sind im Export ausgeblendet.",
+            "description": "Offene OSM-Straßenways; violett gestrichelt markiert einen Lückenschluss, der erst nach anderen Maßnahmen möglich wäre. Einzelne Ways bis 20 m und danach isolierte Abschnitte bis 50 m sind im Export ausgeblendet.",
         },
     )
     proposed = remote_layer(

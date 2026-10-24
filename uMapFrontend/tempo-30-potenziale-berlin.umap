@@ -582,7 +582,7 @@
                 "type": "Text"
               }
             ],
-            "description": "Offene OSM-Straßenways; violett gestrichelt markiert einen Lückenschluss, der erst nach anderen Maßnahmen möglich wäre. Isolierte Abschnitte bis 50 m sind im Export ausgeblendet."
+            "description": "Offene OSM-Straßenways; violett gestrichelt markiert einen Lückenschluss, der erst nach anderen Maßnahmen möglich wäre. Einzelne Ways bis 20 m und danach isolierte Abschnitte bis 50 m sind im Export ausgeblendet."
           },
           "rank": 0
         },

@@ -43,6 +43,34 @@ class PotentialStreetConsolidationTests(unittest.TestCase):
 
         self.assertEqual(result.osm_id.tolist(), [3])
 
+    def test_20_m_way_is_removed_even_when_attached_to_long_section(self):
+        streets = self.streets([
+            (1, "A", 0, 60, 0), (2, "A", 60, 80, 0),
+            (3, "A", 80, 105, 0), (4, "A", 105, 131, 0),
+        ])
+
+        result = PotentialStreetConsolidation.filter_short_isolated(streets)
+
+        self.assertEqual(result.osm_id.tolist(), [1, 3, 4])
+        self.assertEqual(result.logical_segment_length_m.tolist(), [60.0, 51.0, 51.0])
+        self.assertEqual(result.logical_segment_way_count.tolist(), [1, 2, 2])
+
+    def test_removing_short_way_can_leave_section_below_50_m(self):
+        streets = self.streets([(1, "A", 0, 20, 0), (2, "A", 20, 55, 0)])
+
+        result = PotentialStreetConsolidation.filter_short_isolated(streets)
+
+        self.assertTrue(result.empty)
+
+    def test_all_source_ways_at_most_20_m_yield_empty_export(self):
+        streets = self.streets([(1, "A", 0, 10, 0), (2, "A", 10, 30, 0)])
+
+        result = PotentialStreetConsolidation.filter_short_isolated(streets)
+
+        self.assertTrue(result.empty)
+        self.assertEqual(result.crs, streets.crs)
+        self.assertIn("logical_segment_way_count", result.columns)
+
     def test_same_name_elsewhere_does_not_rescue_short_way(self):
         streets = self.streets([(1, "A", 0, 30, 0), (2, "A", 100, 130, 0)])
 

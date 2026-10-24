@@ -6,15 +6,16 @@ from shapely.geometry import Point
 
 
 class PotentialStreetConsolidation:
+    MAX_SOURCE_LENGTH_M = 20
     MAX_ISOLATED_LENGTH_M = 50
     ENDPOINT_TOLERANCE_M = 0.5
 
     @staticmethod
     def filter_short_isolated(streets: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
-        """Keep source ways, but remove logical sections no longer than 50 m.
+        """Remove source ways up to 20 m, then logical sections up to 50 m.
 
-        Connectivity is limited to potential ways with the same street name.
-        Unnamed ways cannot be safely associated with one another.
+        Connectivity uses only the remaining potential ways with the same
+        street name. Unnamed ways cannot be safely associated with one another.
         """
         if streets.empty:
             result = streets.copy()
@@ -22,7 +23,19 @@ class PotentialStreetConsolidation:
             result["logical_segment_way_count"] = pd.Series(dtype=int)
             return result
 
-        metric = streets.to_crs("EPSG:25832").reset_index(drop=True)
+        metric = streets.to_crs("EPSG:25832")
+        source_positions = [
+            index for index, length in enumerate(metric.geometry.length)
+            if length > PotentialStreetConsolidation.MAX_SOURCE_LENGTH_M
+        ]
+        source = streets.iloc[source_positions]
+        metric = metric.iloc[source_positions].reset_index(drop=True)
+        if metric.empty:
+            result = source.copy()
+            result["logical_segment_length_m"] = pd.Series(dtype=float)
+            result["logical_segment_way_count"] = pd.Series(dtype=int)
+            return result
+
         parent = list(range(len(metric)))
         tolerance = PotentialStreetConsolidation.ENDPOINT_TOLERANCE_M
         spatial_index = metric.sindex
@@ -64,7 +77,7 @@ class PotentialStreetConsolidation:
             for index in range(len(metric))
         ]
 
-        result = streets.iloc[[index for index, retained in enumerate(keep) if retained]].copy()
+        result = source.iloc[[index for index, retained in enumerate(keep) if retained]].copy()
         result["logical_segment_length_m"] = [
             round(component_lengths[root(index)], 1) for index, retained in enumerate(keep) if retained
         ]
