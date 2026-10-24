@@ -200,12 +200,6 @@ class GeoJsonCreator:
             )
             export_data_dict[building_type] = export_data_dict[building_type].drop(columns="osm_node_ids")
 
-        if "disability_facilities" in export_data_dict:
-            disability = export_data_dict["disability_facilities"]
-            confirmed = disability["facility_status"] == "confirmed_disabled"
-            export_data_dict["disability_facilities_review"] = disability.loc[~confirmed].copy()
-            export_data_dict["disability_facilities"] = disability.loc[confirmed].copy()
-
         export_data_dict["playgrounds"] = PlaygroundConsolidation.summarize_playground_features(playgroundGDF = export_data_dict["playgrounds"])
 
         # Export

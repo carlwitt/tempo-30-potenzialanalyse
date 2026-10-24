@@ -40,16 +40,22 @@ class BerlinUMapTests(unittest.TestCase):
             "hospitals.geojson", "educational_buildings.geojson", "elderly_homes.geojson",
             "potential_streets.geojson", "facility_street_segments.geojson",
             "facility_covered_street_segments.geojson", "district_stats.geojson",
-            "disability_facilities_review.geojson", "accidents.geojson",
+            "accidents.geojson",
         }
 
-        self.assertEqual(len(layers), 12)
+        self.assertEqual(len(layers), 11)
         self.assertEqual({url.rsplit("/", 1)[-1] for url in urls}, filenames)
         self.assertTrue(all(not layer["features"] for layer in layers))
         self.assertTrue(all(url.startswith(build_berlin_map.REMOTE_BASE + "/") for url in urls))
         self.assertEqual(len(self.generated["layers"]), 4)
         self.assertFalse(any(layer["properties"]["name"] == "OSM-Kontext und Prüffälle"
                              for layer in self.generated["layers"]))
+        disability = next(layer["properties"] for layer in layers
+                          if layer["properties"]["name"] == "Einrichtungen für Menschen mit Behinderung")
+        self.assertEqual({rule["condition"] for rule in disability["rules"]}, {
+            "potential_candidate=true", "facility_status=target_group_unknown",
+            "facility_status=different_target_group",
+        })
 
     def test_accidents_are_one_weighted_heat_layer(self):
         heat = self.generated["layers"][3]["properties"]
@@ -74,7 +80,6 @@ class BerlinUMapTests(unittest.TestCase):
         facility_names = {
             "Spielplätze", "Einrichtungen für Menschen mit Behinderung",
             "Krankenhäuser", "Schulen und Kitas", "Senioren- und Pflegeeinrichtungen",
-            "Behinderteneinrichtungen – ungeklärt",
         }
         for layer in layers:
             props = layer["properties"]
@@ -84,7 +89,7 @@ class BerlinUMapTests(unittest.TestCase):
 
         indicators = {layer["properties"]["name"]: layer["properties"]
                       for layer in self.generated["layers"][0]["layers"]}
-        for name in facility_names - {"Behinderteneinrichtungen – ungeklärt"}:
+        for name in facility_names:
             self.assertIn("§ 45 Abs. 9 Satz 4 Nr. 6 StVO", indicators[name]["description"])
         self.assertIn("werden aber in diesem Einrichtungs-Layer nicht erfasst",
                       indicators["Schulen und Kitas"]["description"])

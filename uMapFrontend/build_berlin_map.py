@@ -123,6 +123,20 @@ def complete_indicators(indicators):
         else:
             props["popupContentTemplate"] = "{description}"
             props.update({"stroke": True, "weight": 4})
+        if props["name"] == "Einrichtungen für Menschen mit Behinderung":
+            props["rules"].extend([
+                {"name": "Prüffall: Zielgruppe nicht erfasst",
+                 "condition": "facility_status=target_group_unknown",
+                 "properties": {"color": "#f0ad4e"}},
+                {"name": "Andere Zielgruppe laut OSM",
+                 "condition": "facility_status=different_target_group",
+                 "properties": {"color": "#999999"}},
+            ])
+            props["description"] += (
+                " Orange markierte Objekte sind Prüffälle ohne erfasste OSM-Zielgruppe; "
+                "graue Objekte haben laut OSM eine andere Zielgruppe. "
+                "Beide werden nicht als bestätigtes Behinderten-Potenzial gezählt."
+            )
 
     education = remote_layer(
         "educational_buildings", "Schulen und Kitas", color="#3b82f6", on_load=True,
@@ -169,19 +183,7 @@ def complete_indicators(indicators):
             ),
         },
     )
-    review = remote_layer(
-        "disability_facilities_review", "Behinderteneinrichtungen – ungeklärt", color="#999999",
-        extra={
-            "fill": True, "stroke": False, "fillOpacity": 0.18,
-            "iconClass": "Circle", "circles": {"radius": {"min": 7}},
-            "fields": fields(("name", "String"), ("facility_type", "String"),
-                             ("facility_status", "String"), ("potential_candidate", "Boolean"),
-                             ("description", "Text"), ("popup_content", "Text")),
-            "popupContentTemplate": FACILITY_POPUP,
-            "description": "Nicht als bestätigtes Behinderten-Potenzial gewertete OSM-Einrichtungen; Typ und Zielgruppe prüfen.",
-        },
-    )
-    layers.extend([review, education, elderly])
+    layers.extend([education, elderly])
     for index, layer in enumerate(layers):
         layer["rank"] = index
     indicators["properties"]["description"] = "Sensible Einrichtungen und Zebrastreifen mit Tempo-30-Prüfhinweisen."
