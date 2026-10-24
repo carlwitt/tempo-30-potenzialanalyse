@@ -80,6 +80,7 @@ class PotentialStreetConsolidationTests(unittest.TestCase):
                   "source_objects": [{"name": "Zebrastreifen", "osm_url": "https://www.openstreetmap.org/node/5"}]}
         streets["is_conditional_gap"] = True
         streets["gap_required_potentials"] = [[[option]]] * 3
+        streets["gap_length_current_m"] = [None] * 3
         streets["maxspeed_class"] = "50"
         anchor = self.streets([(4, "A", 147, 187, 0)])
 
@@ -91,7 +92,8 @@ class PotentialStreetConsolidationTests(unittest.TestCase):
         self.assertEqual(result.source_osm_ids.iloc[0], [1, 2, 3])
         self.assertEqual(result.logical_segment_length_m.iloc[0], 147.0)
         self.assertEqual(result.gap_length_after_m.iloc[0], 147.0)
-        self.assertEqual(result.gap_length_current_m.iloc[0], 187.0)
+        self.assertEqual(result.gap_length_with_prerequisites_m.iloc[0], 187.0)
+        self.assertIsNone(result.gap_length_current_m.iloc[0])
         self.assertEqual(round(result.geometry.iloc[0].length, 1), 147.0)
 
     def test_conditional_sections_with_different_anchors_stay_separate(self):
@@ -101,6 +103,7 @@ class PotentialStreetConsolidationTests(unittest.TestCase):
             [[{"potential_type": "zebra", "anchor_street_osm_id": anchor}]]
             for anchor in (3, 4)
         ]
+        streets["gap_length_current_m"] = [None] * 2
         streets["maxspeed_class"] = "50"
         anchors = self.streets([(3, "A", -40, 0, 0), (4, "A", 120, 160, 0)])
 

@@ -103,6 +103,7 @@ class GeoJsonCreator:
             "source_osm_ids",
             "is_conditional_gap",
             "gap_length_current_m",
+            "gap_length_with_prerequisites_m",
             "gap_length_after_m",
             "gap_required_potentials",
             "gap_required_potential_types",

@@ -43,6 +43,7 @@ class ConditionalGapMetadata:
         """Add a Boolean plus AND/OR dependency groups to the street export."""
         result = streets.copy()
         dependencies = (gap_result.conditional_gap_dependencies or {}) if gap_result else {}
+        direct_lengths = (gap_result.direct_gap_lengths_m or {}) if gap_result else {}
         sources_by_street = ConditionalGapMetadata._sources_by_street(potential_results, source_layers)
         is_conditional = []
         required_groups = []
@@ -82,6 +83,10 @@ class ConditionalGapMetadata:
         result["gap_required_potentials"] = required_groups
         result["gap_required_potential_types"] = required_types
         result["gap_required_street_osm_ids"] = required_street_ids
+        result["gap_length_current_m"] = [
+            direct_lengths.get(street_id) if not conditional else None
+            for street_id, conditional in zip(result["osm_id"], is_conditional)
+        ]
         return result
 
     @staticmethod
@@ -123,16 +128,21 @@ class ConditionalGapMetadata:
                                    for option in group]
                         lines.append(f"Anschluss {index} (eine Alternative genügt): " + " oder ".join(choices) + ".")
 
-                current = street.get("gap_length_current_m")
+                with_prerequisites = street.get("gap_length_with_prerequisites_m")
                 after = street.get("gap_length_after_m")
-                if pd.notna(current):
-                    current_text = f"{current:.1f}".replace(".", ",")
-                    lines.append(f"Länge der Lücke aktuell: ca. {current_text} m")
+                if pd.notna(with_prerequisites):
+                    length_text = f"{with_prerequisites:.1f}".replace(".", ",")
+                    lines.append(f"Tempo-50-Abschnitt einschließlich erforderlichem Anschluss: ca. {length_text} m")
                 if pd.notna(after):
                     after_text = f"{after:.1f}".replace(".", ",")
                     lines.append(f"Länge der Lücke nach Anordnung: ca. {after_text} m")
-                if pd.notna(current) and pd.notna(after):
+                if pd.notna(with_prerequisites) and pd.notna(after):
                     lines.append("OSM-Näherung: Der gesamte Anschlussabschnitt wird als künftiges Tempo 30 angenommen; Anordnungsgrenzen vor Ort prüfen.")
+            else:
+                current = street.get("gap_length_current_m")
+                if pd.notna(current):
+                    current_text = f"{current:.1f}".replace(".", ",")
+                    lines.append(f"Länge zwischen bestehenden Tempo-30-Anschlüssen: ca. {current_text} m")
             descriptions.append("\n\n".join(lines))
 
         result["description"] = descriptions

@@ -145,6 +145,19 @@ class Tempo50GapPotential:
         min_total_length: float = 30,
         potential_types_by_street: dict[int, set[str]] | None = None,
     ) -> tuple[bool, list[list[tuple[str, int]]]]:
+        found, groups, _ = Tempo50GapPotential._evaluate_gap_with_length(
+            seg, gdf, max_total_length, min_total_length, potential_types_by_street
+        )
+        return found, groups
+
+    @staticmethod
+    def _evaluate_gap_with_length(
+        seg,
+        gdf,
+        max_total_length: float = 500,
+        min_total_length: float = 30,
+        potential_types_by_street: dict[int, set[str]] | None = None,
+    ) -> tuple[bool, list[list[tuple[str, int]]], float | None]:
         potential_types_by_street = potential_types_by_street or {}
 
         base_angles = {
@@ -173,7 +186,7 @@ class Tempo50GapPotential:
                 potential_types_by_street=potential_types_by_street,
             )
             if not ok:
-                return False, []
+                return False, [], None
 
             lengths[dir] = length
             if options:
@@ -183,8 +196,8 @@ class Tempo50GapPotential:
         dbg(seg, f'{seg.osm_id} std length: {lengths["Standard"]}, reverse {lengths["Reverse"]}, seg {seg.length_m}')
         
         if min_total_length <= total_corridor_length <= max_total_length:
-            return True, required_groups
-        return False, required_groups
+            return True, required_groups, total_corridor_length
+        return False, required_groups, None
        
     
     def all_directions_tempo30(seg, point, gdf):
@@ -321,28 +334,32 @@ class Tempo50GapPotential:
 
         result = []
         conditional_dependencies = {}
+        direct_lengths = {}
 
         for _, seg in tqdm(classified_permanent_tempo50_or_60.iterrows(),
                         total=len(classified_permanent_tempo50_or_60),
                         desc="Checking segments"):
             
-            found, required_groups = Tempo50GapPotential.evaluate_gap(
+            found, required_groups, corridor_length = Tempo50GapPotential._evaluate_gap_with_length(
                 seg, gdf, potential_types_by_street=potential_types_by_street
             )
             # A future anchor can be reached before a valid existing one, or
             # make the provisional corridor shorter than the 30 m minimum.
             # In either case the existing, direct connection takes priority.
-            if required_groups and Tempo50GapPotential.check_if_straight_line_direction_for_both_ends_has_tempo_30(
-                seg, gdf
-            ):
-                found, required_groups = True, []
+            if required_groups:
+                direct, _, direct_length = Tempo50GapPotential._evaluate_gap_with_length(seg, gdf)
+                if direct:
+                    found, required_groups, corridor_length = True, [], direct_length
             if found:
                 dbg(seg, "Found landwehrst. segment with potential!")
                 result.append(seg.osm_id)
                 if required_groups:
                     conditional_dependencies[seg.osm_id] = required_groups
+                elif corridor_length is not None:
+                    direct_lengths[seg.osm_id] = round(corridor_length, 1)
 
         return PotentialCalculationResult(
             street_ids=result,
             conditional_gap_dependencies=conditional_dependencies,
+            direct_gap_lengths_m=direct_lengths,
         )

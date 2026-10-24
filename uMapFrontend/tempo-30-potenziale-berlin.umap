@@ -591,6 +591,10 @@
                 "type": "Number"
               },
               {
+                "key": "gap_length_with_prerequisites_m",
+                "type": "Number"
+              },
+              {
                 "key": "gap_length_after_m",
                 "type": "Number"
               },

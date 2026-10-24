@@ -115,6 +115,7 @@ class BerlinUMapTests(unittest.TestCase):
 
         self.assertEqual(potential["name"], "Straßenabschnitte mit Tempo-30-Potenzial")
         self.assertEqual(types["gap_length_current_m"], "Number")
+        self.assertEqual(types["gap_length_with_prerequisites_m"], "Number")
         self.assertEqual(types["gap_length_after_m"], "Number")
 
 

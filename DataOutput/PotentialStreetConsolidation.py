@@ -135,8 +135,9 @@ class PotentialStreetConsolidation:
             source_ids = [int(metric.iloc[index]["osm_id"]) for index in members]
             row["source_osm_ids"] = source_ids
             row["gap_length_after_m"] = None
-            row["gap_length_current_m"] = None
+            row["gap_length_with_prerequisites_m"] = None
             if keys[members[0]] is not None:
+                row["gap_length_current_m"] = None
                 geometry = unary_union(metric.geometry.iloc[members].tolist())
                 row["geometry"] = linemerge(geometry) if isinstance(geometry, MultiLineString) else geometry
                 length = sum(metric.geometry.iloc[index].length for index in members)
@@ -156,7 +157,7 @@ class PotentialStreetConsolidation:
                         anchor_ids = set()
                         break
                 if anchor_ids and anchor_ids.issubset(reference.index):
-                    row["gap_length_current_m"] = round(
+                    row["gap_length_with_prerequisites_m"] = round(
                         length + sum(reference.loc[anchor_id].geometry.length for anchor_id in anchor_ids), 1
                     )
             records.append(row)

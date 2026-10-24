@@ -36,6 +36,7 @@ class ConditionalGapTests(unittest.TestCase):
 
         self.assertIn(20, result.street_ids)
         self.assertNotIn(20, result.conditional_gap_dependencies)
+        self.assertEqual(result.direct_gap_lengths_m[20], 100.0)
 
     def test_one_future_anchor_adds_conditional_gap(self):
         streets = self._streets(["30", "50", "50"])
@@ -46,6 +47,7 @@ class ConditionalGapTests(unittest.TestCase):
         self.assertIn(20, result.street_ids)
         self.assertEqual(result.conditional_gap_dependencies[20], [[("playgrounds", 30)]])
         self.assertNotIn(30, result.conditional_gap_dependencies)
+        self.assertNotIn(20, result.direct_gap_lengths_m)
 
     def test_existing_conditional_speed_is_not_a_future_dependency(self):
         streets = self._streets(["30", "50", "50"])
@@ -55,6 +57,7 @@ class ConditionalGapTests(unittest.TestCase):
 
         self.assertIn(20, result.street_ids)
         self.assertNotIn(20, result.conditional_gap_dependencies)
+        self.assertEqual(result.direct_gap_lengths_m[20], 100.0)
 
     def test_existing_t30_beyond_future_anchor_keeps_gap_direct(self):
         x0, y = 390000, 5820000
@@ -73,6 +76,7 @@ class ConditionalGapTests(unittest.TestCase):
 
         self.assertIn(20, result.street_ids)
         self.assertNotIn(20, result.conditional_gap_dependencies)
+        self.assertEqual(result.direct_gap_lengths_m[20], 200.0)
 
     def test_too_short_future_corridor_does_not_hide_valid_direct_gap(self):
         x0, y = 390000, 5820000
@@ -157,7 +161,7 @@ class ConditionalGapTests(unittest.TestCase):
         potentials = {"zebra": PotentialCalculationResult([30], [7, 8], [(7, 30), (8, 30)])}
 
         annotated = ConditionalGapMetadata.annotate(potential, gap_result, potentials, {"zebra": zebras})
-        annotated["gap_length_current_m"] = 140.0
+        annotated["gap_length_with_prerequisites_m"] = 140.0
         annotated["gap_length_after_m"] = 100.0
         rendered = ConditionalGapMetadata.render_popups(annotated, streets)
         popup = rendered.description.iloc[0]
@@ -165,9 +169,24 @@ class ConditionalGapTests(unittest.TestCase):
         self.assertIn("Lückenschluss zur [[https://www.openstreetmap.org/way/30|Teststraße]]", popup)
         self.assertIn("am [[https://www.openstreetmap.org/node/7|Zebrastreifen]]", popup)
         self.assertNotIn("https://www.openstreetmap.org/way/8", popup)
-        self.assertIn("Länge der Lücke aktuell: ca. 140,0 m", popup)
+        self.assertIn("Tempo-50-Abschnitt einschließlich erforderlichem Anschluss: ca. 140,0 m", popup)
         self.assertIn("Länge der Lücke nach Anordnung: ca. 100,0 m", popup)
+        self.assertNotIn("Länge der Lücke aktuell", popup)
         self.assertIn("\n\n", popup)
+
+    def test_direct_popup_only_uses_length_between_existing_tempo_30_anchors(self):
+        streets = self._streets(["30", "50", "30"])
+        potential = streets.loc[streets.osm_id == 20].assign(description="Straße: Teststraße")
+        result = Tempo50GapPotential.find_all_tempo_50_gaps(streets)
+
+        annotated = ConditionalGapMetadata.annotate(potential, result, {}, {})
+        rendered = ConditionalGapMetadata.render_popups(annotated, streets)
+
+        self.assertFalse(rendered.is_conditional_gap.iloc[0])
+        self.assertEqual(rendered.gap_length_current_m.iloc[0], 100.0)
+        self.assertIn("Länge zwischen bestehenden Tempo-30-Anschlüssen: ca. 100,0 m",
+                      rendered.description.iloc[0])
+        self.assertNotIn("erforderlichem Anschluss", rendered.description.iloc[0])
 
     def test_unnamed_anchor_uses_readable_fallback(self):
         option = {"potential_type": "zebra", "anchor_street_osm_id": 30,

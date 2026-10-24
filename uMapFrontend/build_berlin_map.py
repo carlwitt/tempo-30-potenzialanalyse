@@ -202,6 +202,7 @@ def street_layers():
                              ("logical_segment_length_m", "Number"),
                              ("logical_segment_way_count", "Number"),
                              ("gap_length_current_m", "Number"),
+                             ("gap_length_with_prerequisites_m", "Number"),
                              ("gap_length_after_m", "Number"),
                              ("gap_required_potential_types", "String"), ("description", "Text")),
             "description": "Straßenabschnitte mit offenem Tempo-30-Potenzial; violett gestrichelt markiert bedingte Lückenschlüsse. Benachbarte Abschnitte mit denselben Voraussetzungen sind zusammengefasst; isolierte kurze Abschnitte werden ausgeblendet.",
