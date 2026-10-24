@@ -169,7 +169,19 @@ def complete_indicators(indicators):
             ),
         },
     )
-    layers.extend([education, elderly])
+    review = remote_layer(
+        "disability_facilities_review", "Behinderteneinrichtungen – ungeklärt", color="#999999",
+        extra={
+            "fill": True, "stroke": False, "fillOpacity": 0.18,
+            "iconClass": "Circle", "circles": {"radius": {"min": 7}},
+            "fields": fields(("name", "String"), ("facility_type", "String"),
+                             ("facility_status", "String"), ("potential_candidate", "Boolean"),
+                             ("description", "Text"), ("popup_content", "Text")),
+            "popupContentTemplate": FACILITY_POPUP,
+            "description": "Nicht als bestätigtes Behinderten-Potenzial gewertete OSM-Einrichtungen; Typ und Zielgruppe prüfen.",
+        },
+    )
+    layers.extend([review, education, elderly])
     for index, layer in enumerate(layers):
         layer["rank"] = index
     indicators["properties"]["description"] = "Sensible Einrichtungen und Zebrastreifen mit Tempo-30-Prüfhinweisen."
@@ -220,38 +232,25 @@ def street_layers():
     return group("Straßenabschnitte", [potential, proposed, covered], rank=1)
 
 
-def context_layers():
-    review = remote_layer(
-        "disability_facilities_review", "Behinderteneinrichtungen – ungeklärt", color="#999999",
+def accident_layer():
+    layer = remote_layer(
+        "accidents", "Unfälle mit Personenschaden 2022–2025", color="#d7301f",
         extra={
-            "fill": True, "stroke": False, "fillOpacity": 0.18,
-            "iconClass": "Circle", "circles": {"radius": {"min": 7}},
-            "fields": fields(("name", "String"), ("facility_type", "String"),
-                             ("facility_status", "String"), ("potential_candidate", "Boolean"),
-                             ("description", "Text"), ("popup_content", "Text")),
-            "popupContentTemplate": FACILITY_POPUP,
-            "description": "Nicht als bestätigtes Behinderten-Potenzial gewertete OSM-Einrichtungen; Typ und Zielgruppe prüfen.",
+            "type": "Heat", "browsable": False,
+            "heat": {"radius": 20, "intensityProperty": "heat_weight"},
+            "fields": fields(("accident_id", "String"), ("UJAHR", "Number"),
+                             ("UMONAT", "Number"), ("UKATEGORIE", "Number"),
+                             ("heat_weight", "Number"), ("description", "Text")),
+            "description": (
+                "Unfallatlas-Unfälle mit Personenschaden in Berlin seit 2022. "
+                "Gewichtung nach UKATEGORIE: 1 (Todesfolge) = 32, "
+                "2 (Schwerverletzte) = 16, 3 (Leichtverletzte) = 8. "
+                "Heatmap-Helligkeit ist relativ zur Dichte im aktuellen Kartenausschnitt."
+            ),
         },
+        rank=3,
     )
-    speeds = remote_layer(
-        "streets_and_limit", "OSM-Geschwindigkeiten (großer Layer)", color="#999999",
-        extra={
-            "weight": 2, "opacity": 0.5,
-            "rules": [
-                {"name": "Tempo 50/60", "condition": "maxspeed_class=T50+",
-                 "properties": {"color": "#e34a33", "weight": 3}},
-                {"name": "Tempo 30 oder langsamer", "condition": "maxspeed_class=T30-",
-                 "properties": {"color": "#31a354"}},
-                {"name": "Bedingtes Tempo 30", "condition": "maxspeed_class=Conditional-T30",
-                 "properties": {"color": "#3182bd", "dashArray": "5,5"}},
-            ],
-            "fields": fields(("osm_id", "Number"), ("name", "String"),
-                             ("maxspeed_class", "String")),
-            "popupContentTemplate": "# {name}\nOSM-Geschwindigkeitsklasse: {maxspeed_class}\n[[https://www.openstreetmap.org/way/{osm_id}|OSM-Straßenabschnitt prüfen]]",
-            "description": "OSM-Grundklassen aller Straßenabschnitte. Rund 55 MB; deshalb standardmäßig ausgeschaltet.",
-        },
-    )
-    return group("OSM-Kontext und Prüffälle", [review, speeds], rank=3)
+    return layer
 
 
 def complete_districts(layer):
@@ -281,9 +280,11 @@ def build():
     indicators, districts = result["layers"]
     complete_indicators(indicators)
     complete_districts(districts)
-    result["layers"] = [indicators, street_layers(), districts, context_layers()]
+    result["layers"] = [indicators, street_layers(), districts, accident_layer()]
     result["properties"]["longCredit"] = (
         "Daten: [[https://www.openstreetmap.org/copyright|OpenStreetMap-Mitwirkende]] (ODbL). "
+        "Unfälle: [[https://www.opengeodata.nrw.de/produkte/transport_verkehr/unfallatlas/|Unfallatlas]] "
+        "([[https://www.govdata.de/dl-de/by-2-0|DL-DE/BY-2.0]]). "
         "Analyse und Methodik: [[https://github.com/MunichWays/tempo-30-potenzialanalyse|Tempo-30-Potenzialanalyse]]."
     )
 

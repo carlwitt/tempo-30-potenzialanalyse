@@ -37,7 +37,7 @@
       "attribution": "&copy; [[http://www.openstreetmap.org/copyright|OpenStreetMap]] contributors, &copy; [[https://carto.com/attributions|CARTO]]",
       "url_template": "https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png?key=cb1_2ipg_1_a64e4bfb259752dcd3dc012c"
     },
-    "longCredit": "Daten: [[https://www.openstreetmap.org/copyright|OpenStreetMap-Mitwirkende]] (ODbL). Analyse und Methodik: [[https://github.com/MunichWays/tempo-30-potenzialanalyse|Tempo-30-Potenzialanalyse]].",
+    "longCredit": "Daten: [[https://www.openstreetmap.org/copyright|OpenStreetMap-Mitwirkende]] (ODbL). Unfälle: [[https://www.opengeodata.nrw.de/produkte/transport_verkehr/unfallatlas/|Unfallatlas]] ([[https://www.govdata.de/dl-de/by-2-0|DL-DE/BY-2.0]]). Analyse und Methodik: [[https://github.com/MunichWays/tempo-30-potenzialanalyse|Tempo-30-Potenzialanalyse]].",
     "limitBounds": {},
     "syncEnabled": true,
     "zoomControl": true,
@@ -356,6 +356,63 @@
           "type": "FeatureCollection",
           "features": [],
           "properties": {
+            "name": "Behinderteneinrichtungen – ungeklärt",
+            "type": "Default",
+            "color": "#999999",
+            "browsable": true,
+            "inCaption": true,
+            "displayOnLoad": false,
+            "remoteData": {
+              "ttl": "300",
+              "url": "https://tempo-30.adfc-berlin.de/uMap/disability_facilities_review.geojson",
+              "proxy": true,
+              "format": "geojson",
+              "dynamic": false
+            },
+            "popupContentTemplate": "{popup_content}",
+            "fill": true,
+            "stroke": false,
+            "fillOpacity": 0.18,
+            "iconClass": "Circle",
+            "circles": {
+              "radius": {
+                "min": 7
+              }
+            },
+            "fields": [
+              {
+                "key": "name",
+                "type": "String"
+              },
+              {
+                "key": "facility_type",
+                "type": "String"
+              },
+              {
+                "key": "facility_status",
+                "type": "String"
+              },
+              {
+                "key": "potential_candidate",
+                "type": "Boolean"
+              },
+              {
+                "key": "description",
+                "type": "Text"
+              },
+              {
+                "key": "popup_content",
+                "type": "Text"
+              }
+            ],
+            "description": "Nicht als bestätigtes Behinderten-Potenzial gewertete OSM-Einrichtungen; Typ und Zielgruppe prüfen."
+          },
+          "rank": 4
+        },
+        {
+          "type": "FeatureCollection",
+          "features": [],
+          "properties": {
             "name": "Schulen und Kitas",
             "type": "Default",
             "color": "#3b82f6",
@@ -421,7 +478,7 @@
             ],
             "description": "Bildungseinrichtungen umfassen hier OSM-Schulen und Kitas. Gemäß § 45 Abs. 9 Satz 4 Nr. 6 StVO kann im unmittelbaren Bereich allgemeinbildender Schulen, Förderschulen und Kindertagesstätten erleichtert Tempo 30 angeordnet werden, ohne dass eine qualifizierte Gefahrenlage nachgewiesen werden muss. Nach der VwV-StVO setzt dies einen direkten Straßenzugang oder starken Ziel- und Quellverkehr im Nahbereich voraus; die Anordnung ist auf den unmittelbaren Bereich und insgesamt höchstens 300 m zu begrenzen. Hochfrequentierte Schulwege sind ebenfalls gesetzlich genannt, werden aber in diesem Einrichtungs-Layer nicht erfasst."
           },
-          "rank": 4
+          "rank": 5
         },
         {
           "type": "FeatureCollection",
@@ -492,7 +549,7 @@
             ],
             "description": "Alten- und Pflegeheime zählen als sensible soziale Einrichtungen zum Schutz vulnerabler und mobilitätseingeschränkter Menschen. Gemäß § 45 Abs. 9 Satz 4 Nr. 6 StVO in Verbindung mit der VwV-StVO ist im unmittelbaren Bereich in der Regel Tempo 30 vorgesehen, ohne Nachweis einer qualifizierten Gefahrenlage. Nach der VwV-StVO setzt dies einen direkten Straßenzugang oder starken Ziel- und Quellverkehr im Nahbereich voraus; die Anordnung ist auf den unmittelbaren Bereich und insgesamt höchstens 300 m zu begrenzen. Die OSM-Kennzeichnung einer einzelnen Einrichtung ist vor Ort zu prüfen."
           },
-          "rank": 5
+          "rank": 6
         }
       ],
       "type": "FeatureCollection",
@@ -885,134 +942,52 @@
     {
       "type": "FeatureCollection",
       "features": [],
-      "layers": [
-        {
-          "type": "FeatureCollection",
-          "features": [],
-          "properties": {
-            "name": "Behinderteneinrichtungen – ungeklärt",
-            "type": "Default",
-            "color": "#999999",
-            "browsable": true,
-            "inCaption": true,
-            "displayOnLoad": false,
-            "remoteData": {
-              "ttl": "300",
-              "url": "https://tempo-30.adfc-berlin.de/uMap/disability_facilities_review.geojson",
-              "proxy": true,
-              "format": "geojson",
-              "dynamic": false
-            },
-            "popupContentTemplate": "{popup_content}",
-            "fill": true,
-            "stroke": false,
-            "fillOpacity": 0.18,
-            "iconClass": "Circle",
-            "circles": {
-              "radius": {
-                "min": 7
-              }
-            },
-            "fields": [
-              {
-                "key": "name",
-                "type": "String"
-              },
-              {
-                "key": "facility_type",
-                "type": "String"
-              },
-              {
-                "key": "facility_status",
-                "type": "String"
-              },
-              {
-                "key": "potential_candidate",
-                "type": "Boolean"
-              },
-              {
-                "key": "description",
-                "type": "Text"
-              },
-              {
-                "key": "popup_content",
-                "type": "Text"
-              }
-            ],
-            "description": "Nicht als bestätigtes Behinderten-Potenzial gewertete OSM-Einrichtungen; Typ und Zielgruppe prüfen."
-          },
-          "rank": 0
-        },
-        {
-          "type": "FeatureCollection",
-          "features": [],
-          "properties": {
-            "name": "OSM-Geschwindigkeiten (großer Layer)",
-            "type": "Default",
-            "color": "#999999",
-            "browsable": true,
-            "inCaption": true,
-            "displayOnLoad": false,
-            "remoteData": {
-              "ttl": "300",
-              "url": "https://tempo-30.adfc-berlin.de/uMap/streets_and_limit.geojson",
-              "proxy": true,
-              "format": "geojson",
-              "dynamic": false
-            },
-            "popupContentTemplate": "# {name}\nOSM-Geschwindigkeitsklasse: {maxspeed_class}\n[[https://www.openstreetmap.org/way/{osm_id}|OSM-Straßenabschnitt prüfen]]",
-            "weight": 2,
-            "opacity": 0.5,
-            "rules": [
-              {
-                "name": "Tempo 50/60",
-                "condition": "maxspeed_class=T50+",
-                "properties": {
-                  "color": "#e34a33",
-                  "weight": 3
-                }
-              },
-              {
-                "name": "Tempo 30 oder langsamer",
-                "condition": "maxspeed_class=T30-",
-                "properties": {
-                  "color": "#31a354"
-                }
-              },
-              {
-                "name": "Bedingtes Tempo 30",
-                "condition": "maxspeed_class=Conditional-T30",
-                "properties": {
-                  "color": "#3182bd",
-                  "dashArray": "5,5"
-                }
-              }
-            ],
-            "fields": [
-              {
-                "key": "osm_id",
-                "type": "Number"
-              },
-              {
-                "key": "name",
-                "type": "String"
-              },
-              {
-                "key": "maxspeed_class",
-                "type": "String"
-              }
-            ],
-            "description": "OSM-Grundklassen aller Straßenabschnitte. Rund 55 MB; deshalb standardmäßig ausgeschaltet."
-          },
-          "rank": 1
-        }
-      ],
       "properties": {
-        "name": "OSM-Kontext und Prüffälle",
-        "group": true,
-        "browsable": true,
+        "name": "Unfälle mit Personenschaden 2022–2025",
+        "type": "Heat",
+        "color": "#d7301f",
+        "browsable": false,
         "inCaption": true,
-        "displayOnLoad": true
+        "displayOnLoad": false,
+        "remoteData": {
+          "ttl": "300",
+          "url": "https://tempo-30.adfc-berlin.de/uMap/accidents.geojson",
+          "proxy": true,
+          "format": "geojson",
+          "dynamic": false
+        },
+        "popupContentTemplate": "{description}",
+        "heat": {
+          "radius": 20,
+          "intensityProperty": "heat_weight"
+        },
+        "fields": [
+          {
+            "key": "accident_id",
+            "type": "String"
+          },
+          {
+            "key": "UJAHR",
+            "type": "Number"
+          },
+          {
+            "key": "UMONAT",
+            "type": "Number"
+          },
+          {
+            "key": "UKATEGORIE",
+            "type": "Number"
+          },
+          {
+            "key": "heat_weight",
+            "type": "Number"
+          },
+          {
+            "key": "description",
+            "type": "Text"
+          }
+        ],
+        "description": "Unfallatlas-Unfälle mit Personenschaden in Berlin seit 2022. Gewichtung nach UKATEGORIE: 1 (Todesfolge) = 32, 2 (Schwerverletzte) = 16, 3 (Leichtverletzte) = 8. Heatmap-Helligkeit ist relativ zur Dichte im aktuellen Kartenausschnitt."
       },
       "rank": 3
     }

@@ -40,13 +40,23 @@ class BerlinUMapTests(unittest.TestCase):
             "hospitals.geojson", "educational_buildings.geojson", "elderly_homes.geojson",
             "potential_streets.geojson", "facility_street_segments.geojson",
             "facility_covered_street_segments.geojson", "district_stats.geojson",
-            "disability_facilities_review.geojson", "streets_and_limit.geojson",
+            "disability_facilities_review.geojson", "accidents.geojson",
         }
 
         self.assertEqual(len(layers), 12)
         self.assertEqual({url.rsplit("/", 1)[-1] for url in urls}, filenames)
         self.assertTrue(all(not layer["features"] for layer in layers))
         self.assertTrue(all(url.startswith(build_berlin_map.REMOTE_BASE + "/") for url in urls))
+        self.assertEqual(len(self.generated["layers"]), 4)
+        self.assertFalse(any(layer["properties"]["name"] == "OSM-Kontext und Prüffälle"
+                             for layer in self.generated["layers"]))
+
+    def test_accidents_are_one_weighted_heat_layer(self):
+        heat = self.generated["layers"][3]["properties"]
+        self.assertEqual(heat["type"], "Heat")
+        self.assertEqual(heat["heat"]["intensityProperty"], "heat_weight")
+        self.assertEqual(heat["remoteData"]["url"].rsplit("/", 1)[-1], "accidents.geojson")
+        self.assertFalse(heat["displayOnLoad"])
 
     def test_district_metric_fields_are_numeric_and_not_categorized(self):
         props = self.generated["layers"][2]["properties"]
