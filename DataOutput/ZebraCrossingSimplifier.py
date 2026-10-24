@@ -7,6 +7,10 @@ from shapely.geometry import LineString, Point
 
 
 class ZebraCrossingSimplifier:
+    POINT_ON_LINE_M = 3.0
+    ENDPOINT_EXTENSION_M = 6.0
+    ENDPOINT_OFFSET_M = 2.0
+
     @staticmethod
     def _continuation(first: LineString, second: LineString, max_gap_m: float) -> bool:
         """Check whether two short ways continue across the same crossing."""
@@ -28,6 +32,26 @@ class ZebraCrossingSimplifier:
         parallel = abs(ax * bx + ay * by) / (a_length * b_length) >= 0.85
         sideways = abs(ax * (b.y - a.y) - ay * (b.x - a.x)) / a_length
         return parallel and sideways <= 4.0
+
+    @staticmethod
+    def _point_belongs_to_line(point: Point, line: LineString) -> bool:
+        """Include tagged kerb nodes just beyond a mapped crossing way."""
+        if point.distance(line) <= ZebraCrossingSimplifier.POINT_ON_LINE_M:
+            return True
+
+        coords = list(line.coords)
+        for end, neighbor in ((coords[0], coords[1]), (coords[-1], coords[-2])):
+            dx, dy = end[0] - neighbor[0], end[1] - neighbor[1]
+            length = (dx * dx + dy * dy) ** 0.5
+            if not length:
+                continue
+            px, py = point.x - end[0], point.y - end[1]
+            extension = (px * dx + py * dy) / length
+            offset = abs(px * dy - py * dx) / length
+            if (0 < extension <= ZebraCrossingSimplifier.ENDPOINT_EXTENSION_M
+                    and offset <= ZebraCrossingSimplifier.ENDPOINT_OFFSET_M):
+                return True
+        return False
 
     @staticmethod
     def simplify(
@@ -63,15 +87,17 @@ class ZebraCrossingSimplifier:
         for index in line_indices:
             groups.setdefault(root(index), []).append(index)
 
-        # Nodes within 3 m of a way share its marker; others stay point-only crossings.
+        # Nodes on a way or just beyond its ends share its marker.
         attached_points = {key: [] for key in groups}
         standalone_points = []
         for index in point_indices:
             point = metric.geometry[index]
-            nearest = min(
-                line_indices, key=lambda line: point.distance(metric.geometry[line]), default=None
-            )
-            if nearest is not None and point.distance(metric.geometry[nearest]) <= 3.0:
+            candidates = [
+                line for line in line_indices
+                if ZebraCrossingSimplifier._point_belongs_to_line(point, metric.geometry[line])
+            ]
+            nearest = min(candidates, key=lambda line: point.distance(metric.geometry[line]), default=None)
+            if nearest is not None:
                 attached_points[root(nearest)].append(index)
             else:
                 standalone_points.append(index)

@@ -1,8 +1,9 @@
 import unittest
 
 import geopandas as gpd
-from shapely.geometry import LineString, Point
+from shapely.geometry import LineString, Point, Polygon
 
+from DataOutput.DistrictStatsCreator import DistrictStatsCreator
 from DataOutput.ZebraCrossingSimplifier import ZebraCrossingSimplifier
 
 
@@ -52,6 +53,48 @@ class ZebraCrossingSimplifierTests(unittest.TestCase):
 
         self.assertEqual(result.display_role.tolist().count("segment"), 2)
         self.assertEqual(result.display_role.tolist().count("marker"), 2)
+
+    def test_end_nodes_of_one_crossing_count_once_in_district_stats(self):
+        zebras = gpd.GeoDataFrame(
+            {"potential_candidate": [False, False, True, True], "street": [None] * 4},
+            geometry=[
+                LineString([(0, 0), (0, 5)]),
+                LineString([(0, 5), (0, 10)]),
+                Point(0, -4.5),
+                Point(0, 14.5),
+            ],
+            crs="EPSG:25832",
+        )
+        district = gpd.GeoDataFrame(
+            {"district_id": ["01"]},
+            geometry=[Polygon([(-100, -100), (100, -100), (100, 100), (-100, 100)])],
+            crs=zebras.crs,
+        )
+
+        result = ZebraCrossingSimplifier.simplify(zebras)
+        markers = result.loc[result.display_role == "marker"]
+        counts = DistrictStatsCreator._counts(district, markers)
+
+        self.assertEqual(result.display_role.tolist(), ["segment", "marker"])
+        self.assertTrue(markers.potential_candidate.iloc[0])
+        self.assertEqual(counts[0], [1, 1])
+
+        covered = zebras.copy()
+        covered["potential_candidate"] = False
+        covered_markers = ZebraCrossingSimplifier.simplify(covered)
+        covered_markers = covered_markers.loc[covered_markers.display_role == "marker"]
+        self.assertEqual(DistrictStatsCreator._counts(district, covered_markers)[0], [1, 0])
+
+    def test_nearby_side_node_remains_separate_crossing(self):
+        zebras = gpd.GeoDataFrame(
+            {"potential_candidate": [False, False], "street": [None, None]},
+            geometry=[LineString([(0, 0), (0, 10)]), Point(5, 12)],
+            crs="EPSG:25832",
+        )
+
+        result = ZebraCrossingSimplifier.simplify(zebras)
+
+        self.assertEqual(result.display_role.tolist(), ["segment", "marker", "marker"])
 
 if __name__ == "__main__":
     unittest.main()
