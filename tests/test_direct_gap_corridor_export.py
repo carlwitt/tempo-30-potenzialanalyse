@@ -50,7 +50,12 @@ class DirectGapCorridorExportTests(unittest.TestCase):
                 directory, potentials, streets, zebras, {"playgrounds": playgrounds},
                 potential_results={"gap": gaps},
             )
-            data = json.loads((Path(directory) / "potential_streets.geojson").read_text())
+            data = json.loads((Path(directory) / "potential_streets_map.geojson").read_text())
+            legacy = json.loads((Path(directory) / "potential_streets.geojson").read_text())
+
+        self.assertEqual([feature["properties"]["osm_id"] for feature in legacy["features"]], [20])
+        self.assertEqual(legacy["features"][0]["properties"]["feature_type"],
+                         "Potenzial durch Lückenschluss")
 
         by_id = {feature["properties"]["osm_id"]: feature for feature in data["features"]}
         self.assertEqual(set(by_id), {10, 20, 30, 40})

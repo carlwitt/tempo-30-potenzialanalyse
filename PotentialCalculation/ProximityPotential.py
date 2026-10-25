@@ -18,6 +18,7 @@ class ProximityPotential:
         features_gdf: gpd.GeoDataFrame,
         search_distance_m: float = 15.0,
         metric_crs: str = "EPSG:25832",
+        public_only: bool = True,
     ) -> PotentialCalculationResult:
         """
         Finds OSM IDs of tempo-50/60 street segments that are within
@@ -30,7 +31,9 @@ class ProximityPotential:
         if features_gdf is None or features_gdf.empty:
             return PotentialCalculationResult([], [])
 
-        tempo50_or_60 = FacilityStreetRelevance.potential_streets(streets_gdf)
+        tempo50_or_60 = FacilityStreetRelevance.potential_streets(
+            streets_gdf, public_only=public_only,
+        )
 
         if tempo50_or_60.empty:
             return PotentialCalculationResult([], [])

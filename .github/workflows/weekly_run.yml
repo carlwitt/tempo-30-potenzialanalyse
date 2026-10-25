@@ -24,7 +24,11 @@ jobs:
 
       - name: Run main.py
         run: |
+          # Keep the published Munich potential rules until each change is reviewed.
           python main.py
+
+      - name: Check existing Munich GeoJSON contract
+        run: python DataOutput/verify_munich_export.py
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4

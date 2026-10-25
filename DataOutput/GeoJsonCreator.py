@@ -44,7 +44,10 @@ class GeoJsonCreator:
     def create_geojson_layer_files(
         folder_name, streets_with_potential: gpd.GeoDataFrame, streets_w_limit_gdf,
         zebra_gdf, building_data, districts_gdf=None, gap_street_ids=None,
-        main_entrances_gdf=None, potential_results=None,
+        main_entrances_gdf=None, potential_results=None, streets_context_gdf=None,
+        clip_long_potentials=True, filter_short_potentials=True,
+        simplify_crossings=True, compact_playgrounds=True,
+        modern_speed_context=True,
     ):
         export_dir = Path("GEOJSON_EXPORT") / folder_name
         export_dir.mkdir(parents=True, exist_ok=True)
@@ -53,7 +56,9 @@ class GeoJsonCreator:
 
         export_data_dict["zebra"] = zebra_gdf.copy()
         export_data_dict["potential_streets"] = streets_with_potential.copy()
-        export_data_dict["streets_and_limit"] = streets_w_limit_gdf.copy()
+        export_data_dict["streets_and_limit"] = (
+            streets_context_gdf if streets_context_gdf is not None else streets_w_limit_gdf
+        ).copy()
         speed_columns = [
             "maxspeed_conditional_tag", "conditional_speed", "cond_speed_days",
             "cond_speed_starttime", "cond_speed_endtime", "cond_speed_special",
@@ -69,10 +74,11 @@ class GeoJsonCreator:
         for key, data in building_data.items():
             export_data_dict[key] = data.copy()
 
-        export_data_dict["potential_streets"] = PotentialStreetDisplay.clip_long_ways(
-            export_data_dict["potential_streets"], {"zebra": zebra_gdf, **building_data},
-            potential_results or {},
-        )
+        if clip_long_potentials:
+            export_data_dict["potential_streets"] = PotentialStreetDisplay.clip_long_ways(
+                export_data_dict["potential_streets"], {"zebra": zebra_gdf, **building_data},
+                potential_results or {},
+            )
 
         export_data_dict["potential_streets"]["feature_type"] = \
             export_data_dict["potential_streets"]["feature_type"].map({
@@ -90,12 +96,13 @@ class GeoJsonCreator:
             export_data_dict["potential_streets"], gap_result, potential_results or {},
             {"zebra": zebra_gdf, **building_data},
         )
-        export_data_dict["potential_streets"] = PotentialStreetConsolidation.filter_short_isolated(
-            export_data_dict["potential_streets"]
-        )
-        export_data_dict["potential_streets"] = PotentialStreetConsolidation.consolidate_conditional_gaps(
-            export_data_dict["potential_streets"], streets_w_limit_gdf
-        )
+        if filter_short_potentials:
+            export_data_dict["potential_streets"] = PotentialStreetConsolidation.filter_short_isolated(
+                export_data_dict["potential_streets"]
+            )
+            export_data_dict["potential_streets"] = PotentialStreetConsolidation.consolidate_conditional_gaps(
+                export_data_dict["potential_streets"], streets_w_limit_gdf
+            )
         retained_street_ids = {
             street_id for ids in export_data_dict["potential_streets"]["source_osm_ids"]
             for street_id in ids
@@ -135,8 +142,19 @@ class GeoJsonCreator:
         export_data_dict["streets_and_limit"].loc[covered, "maxspeed_class"] = "T30-"
 
         # Override when conditional speed is 30
-        conditional_only = (export_data_dict["streets_and_limit"]["conditional_speed"] == "30") & ~covered
+        conditional_only = export_data_dict["streets_and_limit"]["conditional_speed"] == "30"
+        if modern_speed_context:
+            conditional_only &= ~covered
         export_data_dict["streets_and_limit"].loc[conditional_only, "maxspeed_class"] = "Conditional-T30"
+        # Munich's published speed layer uses these four legend values.
+        # Keep other exact speeds in the description, but do not introduce
+        # a new category at the URL consumed by its existing uMap style.
+        known_classes = {"T30-", "T50+", "Conditional-T30", "Keine Daten"}
+        unknown_class = ~export_data_dict["streets_and_limit"]["maxspeed_class"].isin(known_classes)
+        export_data_dict["streets_and_limit"].loc[unknown_class, "maxspeed_class"] = "Keine Daten"
+        imagery_streets = export_data_dict["streets_and_limit"]
+        if "public_motorcar" in imagery_streets:
+            imagery_streets = imagery_streets.loc[imagery_streets["public_motorcar"].eq(True)].copy()
         
         # Convert to WGS84
         for entry in export_data_dict.keys():
@@ -164,6 +182,10 @@ class GeoJsonCreator:
             "description",
             "geometry"
         ]]
+        # Munich's existing uMap loads this filename and expects only potential
+        # streets. Keep conditional gaps here; the new Berlin map view separates
+        # them and adds connection context without changing that old URL.
+        legacy_potential_streets = export_data_dict["potential_streets"].copy()
         conditional = export_data_dict["potential_streets"]["is_conditional_gap"].eq(True)
         export_data_dict["conditional_gap_streets"] = ConditionalGapMetadata.add_connection_context(
             export_data_dict["potential_streets"].loc[conditional], streets_w_limit_gdf
@@ -198,6 +220,8 @@ class GeoJsonCreator:
         export_data_dict["conditional_gap_streets"] = PotentialStreetDisplay.categorize(
             export_data_dict["conditional_gap_streets"], potential_results or {}
         )
+        export_data_dict["potential_streets_map"] = export_data_dict["potential_streets"]
+        export_data_dict["potential_streets"] = legacy_potential_streets
 
         export_data_dict["streets_and_limit"] = export_data_dict["streets_and_limit"][[
             "osm_id",
@@ -214,13 +238,14 @@ class GeoJsonCreator:
             "street"
         ]]
 
-        export_data_dict["zebra"] = ZebraCrossingSimplifier.simplify(export_data_dict["zebra"])
+        if simplify_crossings:
+            export_data_dict["zebra"] = ZebraCrossingSimplifier.simplify(export_data_dict["zebra"])
         export_data_dict["zebra"] = PotentialReasonAnnotator.add_reason(
             export_data_dict["zebra"],
             "Potenzial: Tempo-50/60-Straße innerhalb von 15 m des Zebrastreifens.",
         )
         export_data_dict["zebra"] = StreetImageryLinkCreator.add_links(
-            export_data_dict["zebra"], export_data_dict["streets_and_limit"]
+            export_data_dict["zebra"], imagery_streets
         )
         if districts_gdf is not None:
             gap_streets = streets_w_limit_gdf.loc[
@@ -277,7 +302,7 @@ class GeoJsonCreator:
                 export_data_dict[building_type], export_data_dict["facility_covered_street_segments"], building_type
             )
             export_data_dict[building_type] = StreetImageryLinkCreator.add_links(
-                export_data_dict[building_type], export_data_dict["streets_and_limit"],
+                export_data_dict[building_type], imagery_streets,
                 main_entrances=main_entrances_gdf,
                 use_area_entrances=building_type != "playgrounds",
             )
@@ -287,13 +312,18 @@ class GeoJsonCreator:
                 export_data_dict["facility_covered_street_segments"],
             )
             export_data_dict[building_type] = export_data_dict[building_type].drop(columns="osm_node_ids")
+            # Existing Munich uMap popups read {name} on every facility.
+            # An unnamed OSM object still needs a string-valued field there.
+            export_data_dict[building_type]["name"] = export_data_dict[building_type]["name"].fillna("")
             export_data_dict[building_type]["facility_id"] = export_data_dict[building_type]["osm_id"]
             external = export_data_dict[building_type]["element_type"].eq("external")
             if external.any():
                 export_data_dict[building_type]["osm_id"] = export_data_dict[building_type]["osm_id"].astype(object)
                 export_data_dict[building_type].loc[external, "osm_id"] = None
 
-        export_data_dict["playgrounds"] = PlaygroundConsolidation.summarize_playground_features(playgroundGDF = export_data_dict["playgrounds"])
+        export_data_dict["playgrounds"] = PlaygroundConsolidation.summarize_playground_features(
+            playgroundGDF=export_data_dict["playgrounds"], compact=compact_playgrounds,
+        )
 
         if districts_gdf is not None:
             for layer, features in export_data_dict.items():
@@ -307,7 +337,16 @@ class GeoJsonCreator:
 
         # Export
         for entry in export_data_dict.keys():
-            geojson = json.loads(export_data_dict[entry].to_json(default=GeoJsonCreator._json_default))
+            features = export_data_dict[entry]
+            if entry in {
+                "potential_streets", "educational_buildings", "hospitals",
+                "elderly_homes", "disability_facilities", "playgrounds",
+            }:
+                # Existing Munich consumers only receive simple GeoJSON
+                # geometries at these URLs. Clipping can create multipart
+                # shapes, so emit their parts as separate features there.
+                features = features.explode(ignore_index=True)
+            geojson = json.loads(features.to_json(default=GeoJsonCreator._json_default))
 
             # Keep null district percentages when a district has no such feature.
             if entry != "district_stats":
@@ -321,4 +360,4 @@ class GeoJsonCreator:
                 json.dump(geojson, file, separators=(",", ":"), ensure_ascii=False)
 
                 print(f"\n✅ GeoJSON successfully written to: {output_file}")
-                print(f"Total features exported: {len(export_data_dict[entry])}")
+                print(f"Total features exported: {len(features)}")

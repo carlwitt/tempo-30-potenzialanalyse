@@ -539,7 +539,7 @@
             "displayOnLoad": true,
             "remoteData": {
               "ttl": "300",
-              "url": "https://tempo-30.adfc-berlin.de/uMap/potential_streets.geojson",
+              "url": "https://tempo-30.adfc-berlin.de/uMap/potential_streets_map.geojson",
               "proxy": true,
               "format": "geojson",
               "dynamic": false

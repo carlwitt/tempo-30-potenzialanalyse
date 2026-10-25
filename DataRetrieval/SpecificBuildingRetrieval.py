@@ -2,7 +2,7 @@
 from DataRetrieval.BuildingRetrieval import BuildingRetrieval
 
 class SpecificBuildingRetrieval:
-    def retrieve_building_data(bbox, building_configs):
+    def retrieve_building_data(bbox, building_configs, validate_osm_sources=True):
 
 
         # Store results here
@@ -15,6 +15,7 @@ class SpecificBuildingRetrieval:
                 tags=config["tags"],
                 name_filter_regex=config.get("regex", None),
                 senior_assisted_living_only=config.get("senior_assisted_living_only", False),
+                validate_osm_sources=validate_osm_sources,
             )
             
             gdf = retrieval.fetch(bbox)

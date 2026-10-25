@@ -17,7 +17,8 @@ class ZebraPotential:
         streets_gdf: gpd.GeoDataFrame,
         zebras_gdf: gpd.GeoDataFrame,
         search_distance_m: float = 15.0,
-        metric_crs: str = "EPSG:25832"
+        metric_crs: str = "EPSG:25832",
+        public_only: bool = True,
     ) -> PotentialCalculationResult:
         """
         Ermittelt OSM_IDs von Tempo-50/60-Straßenabschnitten,
@@ -31,7 +32,10 @@ class ZebraPotential:
         if zebras_gdf is None or zebras_gdf.empty:
             return PotentialCalculationResult([], [])
 
-        tempo50_or_60 = FacilityStreetRelevance.potential_streets(streets_gdf)
+        tempo50_or_60 = FacilityStreetRelevance.potential_streets(
+            streets_gdf, public_only=public_only,
+            exclude_conditional=public_only,
+        )
 
         if tempo50_or_60.empty:
             return PotentialCalculationResult([], [])

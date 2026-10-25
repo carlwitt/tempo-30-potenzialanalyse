@@ -106,5 +106,17 @@ class RoadClassification:
         return "Keine Daten"
 
     @staticmethod
+    def classify_speed_legacy(tags) -> str:
+        """Match the published Munich classes before inferred low-speed tags."""
+        explicit = tags.get("maxspeed")
+        if explicit in {"10", "20", "30"}:
+            return explicit
+        if tags.get("zone:maxspeed") == "30":
+            return "30_Zone"
+        if explicit in {"50", "60"}:
+            return explicit
+        return "Keine Daten"
+
+    @staticmethod
     def is_covered_speed(value) -> bool:
         return value in {"walk", "30_Zone"} or str(value).isdecimal() and int(value) <= 30

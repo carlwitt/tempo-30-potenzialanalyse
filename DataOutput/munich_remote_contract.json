@@ -1,0 +1,261 @@
+{
+  "source_map": "https://umap.openstreetmap.de/de/map/tempo-30-potentialkarte-munchen_127687",
+  "downloaded_on": "2026-10-25",
+  "layers": {
+    "disability_facilities.geojson": {
+      "source_url": "https://www.munichways.de/App/tempo30_geojson/latest/disability_facilities.geojson",
+      "sha256": "ff624136cd3f65bf0b5163fa575056ac498a08c7f7b3a255e6f2c24226e5fb5a",
+      "feature_count": 6,
+      "geometry_types": [
+        "Point",
+        "Polygon"
+      ],
+      "required_fields": [
+        "name",
+        "potential_candidate"
+      ],
+      "field_types": {
+        "housenumber": [
+          "string"
+        ],
+        "name": [
+          "string"
+        ],
+        "operator": [
+          "string"
+        ],
+        "potential_candidate": [
+          "boolean"
+        ],
+        "street": [
+          "string"
+        ],
+        "website": [
+          "string"
+        ]
+      }
+    },
+    "educational_buildings.geojson": {
+      "source_url": "https://www.munichways.de/App/tempo30_geojson/latest/educational_buildings.geojson",
+      "sha256": "dd88ce7f3b906f3f483ba28968a8829c54eb7a59cd34e8c0fb54ae5e7d7d2819",
+      "feature_count": 491,
+      "geometry_types": [
+        "Point",
+        "Polygon"
+      ],
+      "required_fields": [
+        "name",
+        "potential_candidate"
+      ],
+      "field_types": {
+        "housenumber": [
+          "string"
+        ],
+        "name": [
+          "string"
+        ],
+        "operator": [
+          "string"
+        ],
+        "potential_candidate": [
+          "boolean"
+        ],
+        "street": [
+          "string"
+        ],
+        "website": [
+          "string"
+        ]
+      }
+    },
+    "elderly_homes.geojson": {
+      "source_url": "https://www.munichways.de/App/tempo30_geojson/latest/elderly_homes.geojson",
+      "sha256": "edd77b46308bc3a95b1cbc4be7158359e362d39e039d3ef869fb08b54c401b7b",
+      "feature_count": 35,
+      "geometry_types": [
+        "Point",
+        "Polygon"
+      ],
+      "required_fields": [
+        "name",
+        "potential_candidate"
+      ],
+      "field_types": {
+        "housenumber": [
+          "string"
+        ],
+        "name": [
+          "string"
+        ],
+        "operator": [
+          "string"
+        ],
+        "potential_candidate": [
+          "boolean"
+        ],
+        "street": [
+          "string"
+        ],
+        "website": [
+          "string"
+        ]
+      }
+    },
+    "hospitals.geojson": {
+      "source_url": "https://www.munichways.de/App/tempo30_geojson/latest/hospitals.geojson",
+      "sha256": "f0736c673e46232af398f9a8755d09b6a17687111bd697e1a91098ec02c41cd0",
+      "feature_count": 16,
+      "geometry_types": [
+        "Point",
+        "Polygon"
+      ],
+      "required_fields": [
+        "name",
+        "potential_candidate"
+      ],
+      "field_types": {
+        "housenumber": [
+          "string"
+        ],
+        "name": [
+          "string"
+        ],
+        "operator": [
+          "string"
+        ],
+        "potential_candidate": [
+          "boolean"
+        ],
+        "street": [
+          "string"
+        ],
+        "website": [
+          "string"
+        ]
+      }
+    },
+    "playgrounds.geojson": {
+      "source_url": "https://www.munichways.de/App/tempo30_geojson/latest/playgrounds.geojson",
+      "sha256": "391c0a4e8bd45692ffab351bfa7571f3597a7202b46e6b6acb968aa9d76d61fd",
+      "feature_count": 6396,
+      "geometry_types": [
+        "LineString",
+        "Point",
+        "Polygon"
+      ],
+      "required_fields": [
+        "potential_candidate"
+      ],
+      "field_types": {
+        "potential_candidate": [
+          "boolean"
+        ]
+      }
+    },
+    "potential_streets.geojson": {
+      "source_url": "https://www.munichways.de/App/tempo30_geojson/latest/potential_streets.geojson",
+      "sha256": "d5437173069005edd8a24336c6062039e156499551be2e357f9654af267d8a55",
+      "feature_count": 734,
+      "geometry_types": [
+        "LineString"
+      ],
+      "required_fields": [
+        "feature_type",
+        "maxspeed_class",
+        "osm_id"
+      ],
+      "field_types": {
+        "feature_type": [
+          "string"
+        ],
+        "maxspeed_class": [
+          "string"
+        ],
+        "name": [
+          "string"
+        ],
+        "osm_id": [
+          "number"
+        ]
+      },
+      "field_values": {
+        "feature_type": [
+          "Potenzial durch Bildungseinrichtung",
+          "Potenzial durch Krankenhaus",
+          "Potenzial durch Lückenschluss",
+          "Potenzial durch Seniorenwohnheim",
+          "Potenzial durch Spielplatz",
+          "Potenzial durch Zebrastreifen",
+          "Potenzial durch mehrere Faktoren"
+        ],
+        "maxspeed_class": [
+          "50",
+          "60"
+        ]
+      }
+    },
+    "streets_and_limit.geojson": {
+      "source_url": "https://www.munichways.de/App/tempo30_geojson/latest/streets_and_limit.geojson",
+      "sha256": "d3ffe374da5caead57c497e952dfefbdd89cbec50cd9b1e4a430d1f19ae711e9",
+      "feature_count": 61140,
+      "geometry_types": [
+        "LineString"
+      ],
+      "required_fields": [
+        "maxspeed_class",
+        "osm_id"
+      ],
+      "field_types": {
+        "cond_speed_days": [
+          "string"
+        ],
+        "cond_speed_endtime": [
+          "string"
+        ],
+        "cond_speed_special": [
+          "string"
+        ],
+        "cond_speed_starttime": [
+          "string"
+        ],
+        "conditional_speed": [
+          "string"
+        ],
+        "maxspeed_class": [
+          "string"
+        ],
+        "name": [
+          "string"
+        ],
+        "osm_id": [
+          "number"
+        ]
+      },
+      "field_values": {
+        "maxspeed_class": [
+          "Conditional-T30",
+          "Keine Daten",
+          "T30-",
+          "T50+"
+        ]
+      }
+    },
+    "zebra.geojson": {
+      "source_url": "https://www.munichways.de/App/tempo30_geojson/latest/zebra.geojson",
+      "sha256": "0b601cf376341b32936db1fd8397936a336a3a652360368f22a354beedaaefe6",
+      "feature_count": 1045,
+      "geometry_types": [
+        "LineString",
+        "Point"
+      ],
+      "required_fields": [
+        "potential_candidate"
+      ],
+      "field_types": {
+        "potential_candidate": [
+          "boolean"
+        ]
+      }
+    }
+  }
+}

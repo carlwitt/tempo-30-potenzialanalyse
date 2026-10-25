@@ -168,7 +168,8 @@ class SpeedLimitDescriptionTests(unittest.TestCase):
                         potential_results={"gap": gap},
                     )
                     layer_ids = {
-                        "potential_streets": all_ids - conditional_ids,
+                        "potential_streets": all_ids,
+                        "potential_streets_map": all_ids - conditional_ids,
                         "conditional_gap_streets": conditional_ids,
                         "streets_and_limit": all_ids | {42},
                     }
@@ -188,7 +189,7 @@ class SpeedLimitDescriptionTests(unittest.TestCase):
                             if props["osm_id"] == 42:
                                 self.assertNotIn("Bedingte Höchstgeschwindigkeit", props["description"])
                                 continue
-                            if layer in {"potential_streets", "conditional_gap_streets"}:
+                            if layer in {"potential_streets", "potential_streets_map", "conditional_gap_streets"}:
                                 self.assertIn("Potenzialgrund:", props["description"])
                             self.assertIn("30 km/h (Mo-Fr 07:00-17:00)", props["description"])
                             self.assertEqual(props["maxspeed_conditional_tag"], "30 @ (Mo-Fr 07:00-17:00)")
@@ -196,15 +197,18 @@ class SpeedLimitDescriptionTests(unittest.TestCase):
                             self.assertEqual(props["cond_speed_days"], "Mo-Fr")
                             self.assertEqual(props["cond_speed_starttime"], "07:00")
                             self.assertEqual(props["cond_speed_endtime"], "17:00")
-                            if layer == "conditional_gap_streets":
-                                self.assertEqual(props["gap_role"], "gap")
+                            if layer == "conditional_gap_streets" or (
+                                layer == "potential_streets" and props["osm_id"] in conditional_ids
+                            ):
+                                if layer == "conditional_gap_streets":
+                                    self.assertEqual(props["gap_role"], "gap")
                                 self.assertIs(props["is_conditional_gap"], True)
                                 self.assertIn("Bedingter Lückenschluss", props["description"])
                                 self.assertIn("https://www.openstreetmap.org/way/42", props["description"])
                                 self.assertNotIn("einschließlich erforderlichem Anschluss", props["description"])
                                 self.assertNotIn("Länge der Lücke nach Anordnung", props["description"])
                                 self.assertNotIn("OSM-Näherung", props["description"])
-                            elif layer == "potential_streets":
+                            elif layer in {"potential_streets", "potential_streets_map"}:
                                 self.assertIs(props["is_conditional_gap"], False)
                                 self.assertIn("Direkter Lückenschluss", props["description"])
             self.assertEqual(streets.maxspeed_class.tolist(), ["50", "50", "50"])

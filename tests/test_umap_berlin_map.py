@@ -59,7 +59,7 @@ class BerlinUMapTests(unittest.TestCase):
             "playgrounds_map.geojson", "zebra.geojson", "disability_facilities_map.geojson",
             "hospitals_map.geojson", "educational_buildings_map.geojson",
             "elderly_homes_map.geojson",
-            "potential_streets.geojson",
+            "potential_streets_map.geojson",
             "conditional_gap_streets.geojson",
             "facility_covered_street_segments.geojson", "district_stats.geojson",
             "accidents.geojson",

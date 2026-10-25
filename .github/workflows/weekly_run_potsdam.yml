@@ -24,7 +24,11 @@ jobs:
 
       - name: Run main.py
         run: |
-          python main.py Potsdam
+          python main.py Potsdam \
+            --public-road-candidates --validate-osm-sources --broaden-facilities \
+            --near-road-facilities --confirmed-disability-only --strict-gap-evidence \
+            --clip-long-potentials --filter-short-potentials \
+            --simplify-crossings --compact-playgrounds
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4

@@ -159,7 +159,7 @@ def complete_indicators(indicators):
 
 def street_layers():
     potential = remote_layer(
-        "potential_streets", "Straßenabschnitte mit Tempo-30-Potenzial",
+        "potential_streets_map", "Straßenabschnitte mit Tempo-30-Potenzial",
         color=FACILITY_STREET_COLOR, on_load=True,
         extra={
             "weight": 5, "opacity": 0.85, "popupShape": "Large",

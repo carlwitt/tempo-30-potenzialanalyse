@@ -96,7 +96,9 @@ class ZebraCrossingRetrieval:
 
         raise RuntimeError("Overpass failed")
 
-    def fetch_zebra_crossings(self, bbox: Tuple[float, float, float, float]) -> gpd.GeoDataFrame:
+    def fetch_zebra_crossings(
+        self, bbox: Tuple[float, float, float, float], validate_osm_sources: bool = True,
+    ) -> gpd.GeoDataFrame:
         data = self._fetch_raw_cached(bbox)
 
         # Nodes sammeln (für Wege)
@@ -114,13 +116,13 @@ class ZebraCrossingRetrieval:
             # The recursive Overpass query also returns nodes used only to
             # construct a crossing way. Keep a feature only if it satisfies
             # one of the zebra predicates from the query itself.
-            if not any(tags.get(key) == "zebra" for key in (
+            if validate_osm_sources and not any(tags.get(key) == "zebra" for key in (
                 "crossing", "crossing:markings", "crossing_ref"
             )):
                 continue
             # Markings or a legacy zebra reference do not establish an
             # unsignalized crossing when a more specific tag disagrees.
-            if (tags.get("crossing") in {"no", "unmarked", "traffic_signals"}
+            if validate_osm_sources and (tags.get("crossing") in {"no", "unmarked", "traffic_signals"}
                     or tags.get("crossing:markings") in {"no", "none"}):
                 continue
 
@@ -129,9 +131,9 @@ class ZebraCrossingRetrieval:
 
             elif el["type"] == "way":
                 missing = [nid for nid in el.get("nodes", []) if nid not in nodes]
-                if missing:
+                if missing and validate_osm_sources:
                     raise ValueError(f"Incomplete geometry for OSM way {el['id']}: missing nodes {missing[:5]}")
-                coords = [nodes[nid] for nid in el.get("nodes", [])]
+                coords = [nodes[nid] for nid in el.get("nodes", []) if nid in nodes]
                 if len(coords) < 2:
                     continue
                 geom = LineString(coords)

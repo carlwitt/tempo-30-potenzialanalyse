@@ -47,13 +47,16 @@ class FacilityStreetRelevance:
         return streets.loc[mask].copy()
 
     @staticmethod
-    def potential_streets(streets: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    def potential_streets(
+        streets: gpd.GeoDataFrame, public_only: bool = True,
+        exclude_conditional: bool = True,
+    ) -> gpd.GeoDataFrame:
         """Select eligible 50/60 km/h roads for crossing and facility candidates."""
-        roads = FacilityStreetRelevance.traffic_streets(streets)
+        roads = FacilityStreetRelevance.traffic_streets(streets) if public_only else streets
         eligible = (
-            ~roads["highway"].isin(FacilityStreetRelevance.MOTORWAYS)
-            & roads["maxspeed_class"].isin({"50", "60"})
-            & roads["conditional_speed"].ne("30")
+            roads["maxspeed_class"].isin({"50", "60"})
+            & (~roads["highway"].isin(FacilityStreetRelevance.MOTORWAYS) if public_only else True)
+            & (roads["conditional_speed"].ne("30") if exclude_conditional else True)
         )
         return roads.loc[eligible].copy()
 

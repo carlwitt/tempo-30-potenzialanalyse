@@ -30,11 +30,13 @@ class BuildingRetrieval:
         tags: Dict[str, List[str]],
         name_filter_regex: Optional[str] = None,
         senior_assisted_living_only: bool = False,
+        validate_osm_sources: bool = True,
         timeout: int = 60,
     ):
         self.tags = tags
         self.timeout = timeout
         self.senior_assisted_living_only = senior_assisted_living_only
+        self.validate_osm_sources = validate_osm_sources
         self.name_filter_regex = (
             re.compile(name_filter_regex, re.IGNORECASE)
             if name_filter_regex
@@ -173,7 +175,9 @@ class BuildingRetrieval:
             tags = el.get("tags", {})
 
             # Recursive Overpass results also contain geometry support nodes.
-            if not any(tags.get(key) in values for key, values in self.tags.items()):
+            if self.validate_osm_sources and not any(
+                tags.get(key) in values for key, values in self.tags.items()
+            ):
                 continue
 
             # Assisted living also covers non-senior groups; keep only explicit senior sites.
@@ -188,9 +192,9 @@ class BuildingRetrieval:
 
             elif el["type"] == "way":
                 missing = [node_id for node_id in el.get("nodes", []) if node_id not in nodes]
-                if missing:
+                if missing and self.validate_osm_sources:
                     raise ValueError(f"Incomplete geometry for OSM way {el['id']}: missing nodes {missing[:5]}")
-                coords = [nodes[node_id] for node_id in el.get("nodes", [])]
+                coords = [nodes[node_id] for node_id in el.get("nodes", []) if node_id in nodes]
 
                 if len(coords) < 2:
                     continue
@@ -201,6 +205,8 @@ class BuildingRetrieval:
                     geom = LineString(coords)
 
             elif el["type"] == "relation":
+                if not self.validate_osm_sources:
+                    continue
                 geom, relation_node_ids = self._relation_geometry(el, ways, nodes)
                 if geom is None:
                     continue
@@ -215,7 +221,7 @@ class BuildingRetrieval:
                     group.strip().casefold()
                     for group in re.split(r"[;,]", tags.get("social_facility:for", ""))
                 }
-                if "disabled" not in target_groups and (
+                if (not self.validate_osm_sources or "disabled" not in target_groups) and (
                     name is None or not self.name_filter_regex.search(name)
                 ):
                     continue

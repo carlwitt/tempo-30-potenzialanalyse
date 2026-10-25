@@ -273,6 +273,67 @@ class Tempo50GapPotential:
 
         return False, total_length, [], [], []
 
+    @staticmethod
+    def _legacy_follow_chain(start_seg, start_point, start_angle, gdf, max_depth=10, angle_tol=30):
+        """Follow main's nearest-angle rule, including its historical anchors.
+
+        Munich's published potential IDs were computed by this rule. Its
+        conditional 30 anchors and unclassified intermediate ways are kept
+        only when the workflow has not enabled verified gap evidence.
+        """
+        current_seg = start_seg
+        current_point = start_point
+        current_angle = start_angle
+        visited = {start_seg.osm_id}
+        total_length = 0.0
+        spatial_index = gdf.sindex
+        for _ in range(max_depth):
+            candidates = gdf.iloc[list(spatial_index.intersection(current_point.bounds))]
+            candidates = candidates[
+                candidates.geometry.touches(current_point) & (candidates.index != current_seg.name)
+            ]
+            best_cand = None
+            best_diff = float("inf")
+            for _, candidate in candidates.iterrows():
+                if candidate.start_pt.equals(current_point):
+                    candidate_angle = candidate.angle_start
+                elif candidate.end_pt.equals(current_point):
+                    candidate_angle = candidate.angle_end
+                else:
+                    continue
+                diff = Tempo50GapPotential.axis_angle_diff(current_angle, candidate_angle)
+                if diff < best_diff:
+                    best_cand, best_diff = candidate, diff
+            if best_cand is None or best_cand.osm_id in visited or best_diff > angle_tol:
+                return False, total_length
+            if (best_cand.maxspeed_class in {"30", "30_Zone"}
+                    or best_cand.conditional_speed == "30"):
+                return True, total_length
+            visited.add(best_cand.osm_id)
+            total_length += best_cand.length_m
+            if best_cand.start_pt.equals(current_point):
+                current_point, current_angle = best_cand.end_pt, best_cand.angle_end
+            else:
+                current_point, current_angle = best_cand.start_pt, best_cand.angle_start
+            current_seg = best_cand
+        return False, total_length
+
+    @staticmethod
+    def _legacy_gap_present(seg, gdf, min_total_length=30, max_total_length=500):
+        lengths = []
+        for point, angle in ((seg.start_pt, seg.angle_start), (seg.end_pt, seg.angle_end)):
+            touching = gdf[gdf.geometry.touches(point) & (gdf.index != seg.name)]
+            slow = (touching["maxspeed_class"].isin({"30", "30_Zone"})
+                    | touching["conditional_speed"].eq("30"))
+            if not touching.empty and slow.all():
+                lengths.append(0.0)
+                continue
+            found, length = Tempo50GapPotential._legacy_follow_chain(seg, point, angle, gdf)
+            if not found:
+                return False
+            lengths.append(length)
+        return min_total_length <= sum(lengths) + seg.length_m <= max_total_length
+
 
     # -----------------------------------------------------
     # Hauptfunktion
@@ -281,6 +342,7 @@ class Tempo50GapPotential:
     def find_all_tempo_50_gaps(
         gdf: gpd.GeoDataFrame,
         potential_results: dict[str, PotentialCalculationResult] | None = None,
+        strict_gap_evidence: bool = True,
     ) -> PotentialCalculationResult:
         gdf = Tempo50GapPotential.prepare_gdf(gdf)
 
@@ -298,6 +360,15 @@ class Tempo50GapPotential:
             (gdf["length_m"] < 500) & 
             (gdf["conditional_speed"] != "30")
         ]
+
+        if not strict_gap_evidence:
+            legacy_ids = [
+                seg.osm_id for _, seg in tqdm(
+                    classified_permanent_tempo50_or_60.iterrows(),
+                    total=len(classified_permanent_tempo50_or_60), desc="Checking segments",
+                ) if Tempo50GapPotential._legacy_gap_present(seg, gdf)
+            ]
+            return PotentialCalculationResult(street_ids=legacy_ids)
 
         result = []
         conditional_dependencies = {}

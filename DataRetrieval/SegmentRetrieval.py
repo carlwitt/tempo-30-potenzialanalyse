@@ -103,7 +103,9 @@ class SegmentRetrieval:
     def fetch_as_geodataframe(
         self,
         bbox: Tuple[float, float, float, float],
-        crs: str = "EPSG:4326"
+        crs: str = "EPSG:4326",
+        include_nonpublic: bool = False,
+        modern_speed_classes: bool = True,
     ) -> gpd.GeoDataFrame:
         data = self._fetch_raw_cached(bbox)
 
@@ -121,7 +123,12 @@ class SegmentRetrieval:
                 continue
 
             tags = el.get("tags", {})
-            if not RoadClassification.allows_public_motorcar(tags):
+            public_motorcar = RoadClassification.allows_public_motorcar(tags)
+            if not include_nonpublic and not public_motorcar:
+                continue
+            # The established speed-context export included nonpublic roads,
+            # but excluded these non-road path classes. Preserve that scope.
+            if include_nonpublic and tags.get("highway") in {"footway", "cycleway", "path", "steps"}:
                 continue
 
             missing = [nid for nid in el["nodes"] if nid not in nodes]
@@ -131,7 +138,11 @@ class SegmentRetrieval:
             if len(coords) < 2:
                 continue
             
-            new_entry = create_gdf_entry(el, tags["highway"], coords, tags)
+            new_entry = create_gdf_entry(
+                el, tags["highway"], coords, tags,
+                modern_speed_classes=modern_speed_classes,
+            )
+            new_entry["public_motorcar"] = public_motorcar
            
             records.append(new_entry)
 
@@ -141,7 +152,7 @@ class SegmentRetrieval:
         return result_df_sorted
 
 
-def create_gdf_entry(el, highway, coords, tags):
+def create_gdf_entry(el, highway, coords, tags, modern_speed_classes=True):
     maxspeed = tags.get("maxspeed")
     zone_maxspeed = tags.get("zone:maxspeed")
 
@@ -168,7 +179,10 @@ def create_gdf_entry(el, highway, coords, tags):
         "zone_maxspeed_tag": zone_maxspeed,
         "maxspeed_type_tag": tags.get("maxspeed:type"),
         "source_maxspeed_tag": tags.get("source:maxspeed"),
-        "maxspeed_class": RoadClassification.classify_speed(tags),
+        "maxspeed_class": (
+            RoadClassification.classify_speed(tags) if modern_speed_classes
+            else RoadClassification.classify_speed_legacy(tags)
+        ),
         "geometry": LineString(coords)
     }
 
@@ -177,7 +191,8 @@ def create_gdf_entry(el, highway, coords, tags):
         # two time ranges or multiple rules). Still recognise a 30 km/h rule
         # so it cannot become an unsupported open facility/gap potential.
         new_entry["conditional_speed"] = (
-            "30" if has_conditional_tempo_30(max_speed_conditional_str) else None
+            "30" if modern_speed_classes and has_conditional_tempo_30(max_speed_conditional_str)
+            else None
         )
         new_entry["cond_speed_days"] = None
         new_entry["cond_speed_starttime"] = None

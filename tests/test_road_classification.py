@@ -75,10 +75,15 @@ class RoadClassificationTests(unittest.TestCase):
         ]
         with patch.object(SegmentRetrieval, "_fetch_raw_cached", return_value={"elements": nodes + ways}):
             result = SegmentRetrieval().fetch_as_geodataframe((52, 13, 52.1, 13.1))
+            context = SegmentRetrieval().fetch_as_geodataframe(
+                (52, 13, 52.1, 13.1), include_nonpublic=True,
+            )
 
         self.assertEqual(set(result.osm_id), {10, 40})
         self.assertEqual(result.set_index("osm_id").loc[10, "maxspeed_class"], "walk")
         self.assertTrue(result.public_motorcar.all())
+        self.assertEqual(set(context.osm_id), {10, 20, 30, 40})
+        self.assertFalse(context.set_index("osm_id").loc[20, "public_motorcar"])
 
     def test_missing_way_node_cannot_create_shortcut_street(self):
         elements = [
