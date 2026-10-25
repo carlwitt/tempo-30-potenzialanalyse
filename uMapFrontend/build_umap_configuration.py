@@ -24,11 +24,14 @@ FACILITY_STREET_COLOR = "#d7191c"
 CROSSING_STREET_COLOR = "#f28e2b"
 GAP_STREET_COLOR = "#8e44ad"
 EXISTING_CONNECTION_COLOR = "#1a9850"
-FACILITY_MAP_FILES = {
-    "Spielplätze": "playgrounds_map",
-    "Einrichtungen für Menschen mit Behinderung": "disability_facilities_map",
-    "Krankenhäuser": "hospitals_map",
+# Four categories from Tableau 10; gray is reserved for inactive indicators.
+# https://d3js.org/d3-scale-chromatic/categorical#schemeTableau10
+INDICATOR_COLORS = {
+    "children": "#76b7b2", "education": "#4e79a7",
+    "care": "#af7aa1", "crossing": "#f28e2c",
 }
+INACTIVE_COLOR = "#9e9e9e"
+
 
 def fields(*items):
     return [{"key": key, "type": kind} for key, kind in items]
@@ -75,84 +78,61 @@ def group(name, layers, rank):
 
 
 def complete_indicators(indicators):
-    layers = indicators["layers"]
-    current_fields = {
-        "Spielplätze": fields(("osm_id", "Number"), ("name", "String"),
-                              ("facility_type", "String"), ("potential_candidate", "Boolean"),
-                              ("matched_street_count", "Number"), ("covered_street_count", "Number"),
-                              ("description", "Text"), ("popup_content", "Text")),
-        "Zebrastreifen": fields(("display_role", "String"), ("potential_candidate", "Boolean"),
-                               ("potential_reason", "String"), ("description", "Text")),
-        "Einrichtungen für Menschen mit Behinderung": fields(
-            ("osm_id", "Number"), ("name", "String"), ("facility_type", "String"),
-            ("facility_status", "String"), ("potential_candidate", "Boolean"),
-            ("matched_street_count", "Number"), ("covered_street_count", "Number"),
-            ("description", "Text"), ("popup_content", "Text")),
-        "Krankenhäuser": fields(("osm_id", "Number"), ("name", "String"),
-                               ("facility_type", "String"), ("potential_candidate", "Boolean"),
-                               ("matched_street_count", "Number"), ("covered_street_count", "Number"),
-                               ("description", "Text"), ("popup_content", "Text")),
-    }
+    """Show each indicator's category in color and its inactive state in gray.
 
-    # Rebuild the generated facility layers when the backup already contains
-    # an older generated version of them.
-    layers[:] = [layer for layer in layers if layer["properties"]["name"] in current_fields]
-
-    # Preserve the backup's zebra stripe marker while keeping crossing
-    # segments visible and matching field types to the GeoJSON booleans.
-    for layer in layers:
-        props = layer["properties"]
-        props["fields"] = current_fields[props["name"]]
-        props["description"] = LAYER_DESCRIPTIONS[props["name"]]
-        props["displayOnLoad"] = False
-        if props["name"] != "Zebrastreifen":
-            props["popupContentTemplate"] = FACILITY_POPUP
-            props["remoteData"]["url"] = f"{FACILITY_MAP_FILES[props['name']]}.geojson"
-        else:
-            props["popupContentTemplate"] = "{description}"
-            props.update({"stroke": True, "weight": 4})
-        if props["name"] == "Einrichtungen für Menschen mit Behinderung":
-            props["rules"] = [
-                rule for rule in props["rules"]
-                if rule["condition"] not in {
-                    "facility_status=target_group_unknown",
-                    "facility_status=different_target_group",
-                }
-            ]
-
-    education = remote_layer(
-        "educational_buildings_map", "Schulen und Kitas", color="#3b82f6",
-        extra={
-            "fill": True, "stroke": False, "fillOpacity": 0.16,
-            "iconClass": "Circle", "circles": {"radius": {"min": 8}},
-            "rules": [{"name": "Bildungseinrichtung mit Potenzial", "condition": "potential_candidate=true",
-                       "properties": {"color": "#d7191c", "fillOpacity": 0.7}}],
-            "fields": fields(("name", "String"), ("facility_type", "String"),
-                             ("potential_candidate", "Boolean"), ("matched_street_count", "Number"),
-                             ("covered_street_count", "Number"), ("description", "Text"),
-                             ("popup_content", "Text")),
-            "popupContentTemplate": FACILITY_POPUP,
-            "description": LAYER_DESCRIPTIONS["Schulen und Kitas"],
-        },
+    Rebuild the six layers together so template colors and obsolete review
+    rules cannot override the legend. Only the zebra pictogram is inherited.
+    The optional layers include both states; streets remain the initial view.
+    """
+    zebra = next(layer["properties"] for layer in indicators["layers"]
+                 if layer["properties"]["name"] == "Zebrastreifen")
+    common_fields = fields(
+        ("osm_id", "Number"), ("name", "String"), ("facility_type", "String"),
+        ("potential_candidate", "Boolean"), ("matched_street_count", "Number"),
+        ("covered_street_count", "Number"), ("description", "Text"), ("popup_content", "Text"),
     )
-    elderly = remote_layer(
-        "elderly_homes_map", "Senioren- und Pflegeeinrichtungen", color="#7c6bb0",
-        extra={
-            "fill": True, "stroke": False, "fillOpacity": 0.16,
+    layers = []
+    for name, filename, category in (
+        ("Spielplätze", "playgrounds_map", "children"),
+        ("Zebrastreifen", "zebra", "crossing"),
+        ("Einrichtungen für Menschen mit Behinderung", "disability_facilities_map", "care"),
+        ("Krankenhäuser", "hospitals_map", "care"),
+        ("Schulen und Kitas", "educational_buildings_map", "education"),
+        ("Senioren- und Pflegeeinrichtungen", "elderly_homes_map", "care"),
+    ):
+        rules = [
+            {"name": f"{name} ohne Auswirkungen auf die aktuelle Geschwindigkeitsbeschränkung",
+             "condition": "potential_candidate=false",
+             "properties": {"color": INACTIVE_COLOR, "opacity": 0.45,
+                            "fillOpacity": 0.15, "iconOpacity": 0.5}},
+            {"name": f"{name} mit möglichem Einfluss auf eine Tempo-30-Anordnung",
+             "condition": "potential_candidate=true",
+             "properties": {"color": INDICATOR_COLORS[category], "opacity": 0.85,
+                            "fillOpacity": 0.35, "iconOpacity": 0.9}},
+        ]
+        if category == "education":
+            # uMap uses the first matching rule per property: inactive Kitas
+            # stay gray; active Kitas share the playground color.
+            rules.insert(1, {"name": "Kitas", "condition": "facility_type=Kindergarten",
+                             "properties": {"color": INDICATOR_COLORS["children"]}})
+        style = {
+            "fill": True, "stroke": False, "fillOpacity": 0.15, "iconOpacity": 0.5,
             "iconClass": "Circle", "circles": {"radius": {"min": 8}},
-            "rules": [{"name": "Senioreneinrichtung mit Potenzial", "condition": "potential_candidate=true",
-                       "properties": {"color": "#d7191c", "fillOpacity": 0.7}}],
-            "fields": fields(("name", "String"), ("facility_type", "String"),
-                             ("potential_candidate", "Boolean"), ("matched_street_count", "Number"),
-                             ("covered_street_count", "Number"), ("description", "Text"),
-                             ("popup_content", "Text")),
+            "rules": rules, "fields": common_fields,
             "popupContentTemplate": FACILITY_POPUP,
-            "description": LAYER_DESCRIPTIONS["Senioren- und Pflegeeinrichtungen"],
-        },
-    )
-    layers.extend([education, elderly])
-    for index, layer in enumerate(layers):
-        layer["rank"] = index
+            "description": LAYER_DESCRIPTIONS[name],
+        }
+        if category == "crossing":
+            style.update({"fill": False, "stroke": True, "weight": 4,
+                          "popupContentTemplate": "{description}",
+                          "fields": fields(("display_role", "String"), ("potential_candidate", "Boolean"),
+                                           ("potential_reason", "String"), ("description", "Text"))})
+            style.pop("iconClass")
+            style.update({key: zebra[key] for key in ("iconUrl", "iconClass") if key in zebra})
+        elif filename == "disability_facilities_map":
+            style["fields"] = [*common_fields, *fields(("facility_status", "String"))]
+        layers.append(remote_layer(filename, name, color=INACTIVE_COLOR, extra=style, rank=len(layers)))
+    indicators["layers"] = layers
     indicators["properties"]["displayOnLoad"] = False
     indicators["properties"]["description"] = LAYER_DESCRIPTIONS["Tempo 30 Indikatoren"]
 

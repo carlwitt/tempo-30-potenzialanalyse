@@ -65,19 +65,49 @@
           "type": "FeatureCollection",
           "features": [],
           "properties": {
-            "fill": true,
-            "heat": {},
             "name": "Spielplätze",
             "type": "Default",
-            "color": "White",
+            "color": "#9e9e9e",
+            "browsable": true,
+            "inCaption": true,
+            "displayOnLoad": false,
+            "remoteData": {
+              "ttl": "300",
+              "url": "https://tempo-30.adfc-berlin.de/uMap/playgrounds_map.geojson",
+              "proxy": true,
+              "format": "geojson",
+              "dynamic": false
+            },
+            "popupContentTemplate": "{popup_content}",
+            "fill": true,
+            "stroke": false,
+            "fillOpacity": 0.15,
+            "iconOpacity": 0.5,
+            "iconClass": "Circle",
+            "circles": {
+              "radius": {
+                "min": 8
+              }
+            },
             "rules": [
               {
-                "name": "Spielplatz an Tempo-50-Straßenabschnitt",
+                "name": "Spielplätze ohne Auswirkungen auf die aktuelle Geschwindigkeitsbeschränkung",
+                "condition": "potential_candidate=false",
+                "properties": {
+                  "color": "#9e9e9e",
+                  "opacity": 0.45,
+                  "fillOpacity": 0.15,
+                  "iconOpacity": 0.5
+                }
+              },
+              {
+                "name": "Spielplätze mit möglichem Einfluss auf eine Tempo-30-Anordnung",
                 "condition": "potential_candidate=true",
                 "properties": {
-                  "color": "Red",
-                  "opacity": 0.7,
-                  "fillOpacity": 0.7
+                  "color": "#76b7b2",
+                  "opacity": 0.85,
+                  "fillOpacity": 0.35,
+                  "iconOpacity": 0.9
                 }
               }
             ],
@@ -115,34 +145,7 @@
                 "type": "Text"
               }
             ],
-            "stroke": false,
-            "circles": {
-              "radius": {
-                "min": 8
-              }
-            },
-            "cluster": {},
-            "browsable": true,
-            "iconClass": "Circle",
-            "inCaption": true,
-            "choropleth": {
-              "mode": "kmeans",
-              "brewer": "Blues",
-              "classes": 9
-            },
-            "remoteData": {
-              "ttl": "300",
-              "url": "https://tempo-30.adfc-berlin.de/uMap/playgrounds_map.geojson",
-              "proxy": true,
-              "format": "geojson"
-            },
-            "categorized": {
-              "mode": "alpha",
-              "brewer": "Blues"
-            },
-            "description": "Spielplätze gelten als privilegierte Orte zum besonderen Schutz von Kindern.",
-            "displayOnLoad": false,
-            "popupContentTemplate": "{popup_content}"
+            "description": "Spielplätze gelten als privilegierte Orte zum besonderen Schutz von Kindern."
           },
           "rank": 0
         },
@@ -150,17 +153,47 @@
           "type": "FeatureCollection",
           "features": [],
           "properties": {
-            "fill": false,
-            "heat": {},
             "name": "Zebrastreifen",
             "type": "Default",
-            "color": "White",
+            "color": "#9e9e9e",
+            "browsable": true,
+            "inCaption": true,
+            "displayOnLoad": false,
+            "remoteData": {
+              "ttl": "300",
+              "url": "https://tempo-30.adfc-berlin.de/uMap/zebra.geojson",
+              "proxy": true,
+              "format": "geojson",
+              "dynamic": false
+            },
+            "popupContentTemplate": "{description}",
+            "fill": false,
+            "stroke": true,
+            "fillOpacity": 0.15,
+            "iconOpacity": 0.5,
+            "circles": {
+              "radius": {
+                "min": 8
+              }
+            },
             "rules": [
               {
-                "name": "Ungeschützte Zebrastreifen",
+                "name": "Zebrastreifen ohne Auswirkungen auf die aktuelle Geschwindigkeitsbeschränkung",
+                "condition": "potential_candidate=false",
+                "properties": {
+                  "color": "#9e9e9e",
+                  "opacity": 0.45,
+                  "fillOpacity": 0.15,
+                  "iconOpacity": 0.5
+                }
+              },
+              {
+                "name": "Zebrastreifen mit möglichem Einfluss auf eine Tempo-30-Anordnung",
                 "condition": "potential_candidate=true",
                 "properties": {
-                  "color": "Red",
+                  "color": "#f28e2c",
+                  "opacity": 0.85,
+                  "fillOpacity": 0.35,
                   "iconOpacity": 0.9
                 }
               }
@@ -183,32 +216,9 @@
                 "type": "Text"
               }
             ],
-            "stroke": true,
-            "weight": 4,
-            "cluster": {},
-            "iconUrl": "|||",
-            "browsable": true,
-            "inCaption": true,
-            "choropleth": {
-              "mode": "kmeans",
-              "brewer": "Blues",
-              "classes": 9
-            },
-            "remoteData": {
-              "ttl": "300",
-              "url": "https://tempo-30.adfc-berlin.de/uMap/zebra.geojson",
-              "proxy": true,
-              "format": "geojson",
-              "dynamic": false
-            },
-            "categorized": {
-              "mode": "alpha",
-              "brewer": "Blues"
-            },
             "description": "Bei Fußgängerüberwegen kann erleichtert Tempo 30 angeordnet werden.",
-            "iconOpacity": 0.4,
-            "displayOnLoad": false,
-            "popupContentTemplate": "{description}"
+            "weight": 4,
+            "iconUrl": "|||"
           },
           "rank": 1
         },
@@ -217,13 +227,48 @@
           "features": [],
           "properties": {
             "name": "Einrichtungen für Menschen mit Behinderung",
-            "color": "White",
+            "type": "Default",
+            "color": "#9e9e9e",
+            "browsable": true,
+            "inCaption": true,
+            "displayOnLoad": false,
+            "remoteData": {
+              "ttl": "300",
+              "url": "https://tempo-30.adfc-berlin.de/uMap/disability_facilities_map.geojson",
+              "proxy": true,
+              "format": "geojson",
+              "dynamic": false
+            },
+            "popupContentTemplate": "{popup_content}",
+            "fill": true,
+            "stroke": false,
+            "fillOpacity": 0.15,
+            "iconOpacity": 0.5,
+            "iconClass": "Circle",
+            "circles": {
+              "radius": {
+                "min": 8
+              }
+            },
             "rules": [
               {
-                "name": "Ungeschützte Einrichtungen für Menschen mit Behinderungen",
+                "name": "Einrichtungen für Menschen mit Behinderung ohne Auswirkungen auf die aktuelle Geschwindigkeitsbeschränkung",
+                "condition": "potential_candidate=false",
+                "properties": {
+                  "color": "#9e9e9e",
+                  "opacity": 0.45,
+                  "fillOpacity": 0.15,
+                  "iconOpacity": 0.5
+                }
+              },
+              {
+                "name": "Einrichtungen für Menschen mit Behinderung mit möglichem Einfluss auf eine Tempo-30-Anordnung",
                 "condition": "potential_candidate=true",
                 "properties": {
-                  "color": "Red"
+                  "color": "#af7aa1",
+                  "opacity": 0.85,
+                  "fillOpacity": 0.35,
+                  "iconOpacity": 0.9
                 }
               }
             ],
@@ -238,10 +283,6 @@
               },
               {
                 "key": "facility_type",
-                "type": "String"
-              },
-              {
-                "key": "facility_status",
                 "type": "String"
               },
               {
@@ -263,21 +304,13 @@
               {
                 "key": "popup_content",
                 "type": "Text"
+              },
+              {
+                "key": "facility_status",
+                "type": "String"
               }
             ],
-            "opacity": 0.2,
-            "browsable": true,
-            "iconClass": "Default",
-            "inCaption": true,
-            "remoteData": {
-              "ttl": "3600",
-              "url": "https://tempo-30.adfc-berlin.de/uMap/disability_facilities_map.geojson",
-              "proxy": true,
-              "format": "geojson"
-            },
-            "description": "Einrichtungen für Menschen mit Behinderung, etwa Wohnheime, Tagesstätten oder Werkstätten, sind seit der Reform ausdrücklich als sensible Orte benannt.",
-            "displayOnLoad": false,
-            "popupContentTemplate": "{popup_content}"
+            "description": "Einrichtungen für Menschen mit Behinderung, etwa Wohnheime, Tagesstätten oder Werkstätten, sind seit der Reform ausdrücklich als sensible Orte benannt."
           },
           "rank": 2
         },
@@ -285,19 +318,49 @@
           "type": "FeatureCollection",
           "features": [],
           "properties": {
-            "fill": true,
-            "heat": {},
             "name": "Krankenhäuser",
             "type": "Default",
-            "color": "Blue",
+            "color": "#9e9e9e",
+            "browsable": true,
+            "inCaption": true,
+            "displayOnLoad": false,
+            "remoteData": {
+              "ttl": "300",
+              "url": "https://tempo-30.adfc-berlin.de/uMap/hospitals_map.geojson",
+              "proxy": true,
+              "format": "geojson",
+              "dynamic": false
+            },
+            "popupContentTemplate": "{popup_content}",
+            "fill": true,
+            "stroke": false,
+            "fillOpacity": 0.15,
+            "iconOpacity": 0.5,
+            "iconClass": "Circle",
+            "circles": {
+              "radius": {
+                "min": 8
+              }
+            },
             "rules": [
               {
-                "name": "Krankenhaus an Tempo-50-Straßenabschnitt",
+                "name": "Krankenhäuser ohne Auswirkungen auf die aktuelle Geschwindigkeitsbeschränkung",
+                "condition": "potential_candidate=false",
+                "properties": {
+                  "color": "#9e9e9e",
+                  "opacity": 0.45,
+                  "fillOpacity": 0.15,
+                  "iconOpacity": 0.5
+                }
+              },
+              {
+                "name": "Krankenhäuser mit möglichem Einfluss auf eine Tempo-30-Anordnung",
                 "condition": "potential_candidate=true",
                 "properties": {
-                  "color": "Red",
-                  "opacity": 0.7,
-                  "fillOpacity": 0.7
+                  "color": "#af7aa1",
+                  "opacity": 0.85,
+                  "fillOpacity": 0.35,
+                  "iconOpacity": 0.9
                 }
               }
             ],
@@ -335,34 +398,7 @@
                 "type": "Text"
               }
             ],
-            "stroke": false,
-            "circles": {
-              "radius": {
-                "min": 8
-              }
-            },
-            "cluster": {},
-            "browsable": true,
-            "iconClass": "Default",
-            "inCaption": true,
-            "choropleth": {
-              "mode": "kmeans",
-              "brewer": "Blues",
-              "classes": 9
-            },
-            "remoteData": {
-              "ttl": "300",
-              "url": "https://tempo-30.adfc-berlin.de/uMap/hospitals_map.geojson",
-              "proxy": true,
-              "format": "geojson"
-            },
-            "categorized": {
-              "mode": "alpha",
-              "brewer": "Blues"
-            },
-            "description": "Krankenhäuser sind als sensible Gesundheitseinrichtungen genannt.",
-            "displayOnLoad": false,
-            "popupContentTemplate": "{popup_content}"
+            "description": "Krankenhäuser sind als sensible Gesundheitseinrichtungen genannt."
           },
           "rank": 3
         },
@@ -372,7 +408,7 @@
           "properties": {
             "name": "Schulen und Kitas",
             "type": "Default",
-            "color": "#3b82f6",
+            "color": "#9e9e9e",
             "browsable": true,
             "inCaption": true,
             "displayOnLoad": false,
@@ -386,7 +422,8 @@
             "popupContentTemplate": "{popup_content}",
             "fill": true,
             "stroke": false,
-            "fillOpacity": 0.16,
+            "fillOpacity": 0.15,
+            "iconOpacity": 0.5,
             "iconClass": "Circle",
             "circles": {
               "radius": {
@@ -395,15 +432,38 @@
             },
             "rules": [
               {
-                "name": "Bildungseinrichtung mit Potenzial",
+                "name": "Schulen und Kitas ohne Auswirkungen auf die aktuelle Geschwindigkeitsbeschränkung",
+                "condition": "potential_candidate=false",
+                "properties": {
+                  "color": "#9e9e9e",
+                  "opacity": 0.45,
+                  "fillOpacity": 0.15,
+                  "iconOpacity": 0.5
+                }
+              },
+              {
+                "name": "Kitas",
+                "condition": "facility_type=Kindergarten",
+                "properties": {
+                  "color": "#76b7b2"
+                }
+              },
+              {
+                "name": "Schulen und Kitas mit möglichem Einfluss auf eine Tempo-30-Anordnung",
                 "condition": "potential_candidate=true",
                 "properties": {
-                  "color": "#d7191c",
-                  "fillOpacity": 0.7
+                  "color": "#4e79a7",
+                  "opacity": 0.85,
+                  "fillOpacity": 0.35,
+                  "iconOpacity": 0.9
                 }
               }
             ],
             "fields": [
+              {
+                "key": "osm_id",
+                "type": "Number"
+              },
               {
                 "key": "name",
                 "type": "String"
@@ -443,7 +503,7 @@
           "properties": {
             "name": "Senioren- und Pflegeeinrichtungen",
             "type": "Default",
-            "color": "#7c6bb0",
+            "color": "#9e9e9e",
             "browsable": true,
             "inCaption": true,
             "displayOnLoad": false,
@@ -457,7 +517,8 @@
             "popupContentTemplate": "{popup_content}",
             "fill": true,
             "stroke": false,
-            "fillOpacity": 0.16,
+            "fillOpacity": 0.15,
+            "iconOpacity": 0.5,
             "iconClass": "Circle",
             "circles": {
               "radius": {
@@ -466,15 +527,31 @@
             },
             "rules": [
               {
-                "name": "Senioreneinrichtung mit Potenzial",
+                "name": "Senioren- und Pflegeeinrichtungen ohne Auswirkungen auf die aktuelle Geschwindigkeitsbeschränkung",
+                "condition": "potential_candidate=false",
+                "properties": {
+                  "color": "#9e9e9e",
+                  "opacity": 0.45,
+                  "fillOpacity": 0.15,
+                  "iconOpacity": 0.5
+                }
+              },
+              {
+                "name": "Senioren- und Pflegeeinrichtungen mit möglichem Einfluss auf eine Tempo-30-Anordnung",
                 "condition": "potential_candidate=true",
                 "properties": {
-                  "color": "#d7191c",
-                  "fillOpacity": 0.7
+                  "color": "#af7aa1",
+                  "opacity": 0.85,
+                  "fillOpacity": 0.35,
+                  "iconOpacity": 0.9
                 }
               }
             ],
             "fields": [
+              {
+                "key": "osm_id",
+                "type": "Number"
+              },
               {
                 "key": "name",
                 "type": "String"
@@ -518,7 +595,7 @@
         "browsable": true,
         "inCaption": true,
         "remoteData": {},
-        "description": "Lokale Gegebenheiten wie Schulen, Kitas, Zebrastreifen, etc. die ein Tempolimit nahelegen. Grundlage ist § 45 StVO, der eine Anordnung ohne Nachweis einer qualifizierten Gefahrenlage ermöglicht. Bei Einrichtungen wie Schulen, Kitas oder ähnlichen Orten setzt dies nach VwV-StVO einen direkten Straßenzugang oder starken Ziel- und Quellverkehr im Nahbereich voraus; die Anordnung ist in der Regel auf den unmittelbaren Bereich und insgesamt höchstens 300 m zu begrenzen.",
+        "description": "Lokale Gegebenheiten wie Schulen, Kitas und Zebrastreifen, die ein Tempolimit nahelegen. Farbe: möglicher Einfluss auf eine Tempo-30-Anordnung; grau: kein offenes Potenzial nach den Berechnungsregeln. Grundlage ist § 45 StVO, der eine Anordnung ohne Nachweis einer qualifizierten Gefahrenlage ermöglicht. Bei Einrichtungen wie Schulen, Kitas oder ähnlichen Orten setzt dies nach VwV-StVO einen direkten Straßenzugang oder starken Ziel- und Quellverkehr im Nahbereich voraus; die Anordnung ist in der Regel auf den unmittelbaren Bereich und insgesamt höchstens 300 m zu begrenzen.",
         "displayOnLoad": false
       },
       "rank": 11

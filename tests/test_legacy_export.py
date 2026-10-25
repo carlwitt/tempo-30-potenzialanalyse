@@ -55,6 +55,53 @@ class LegacyExportTests(unittest.TestCase):
                             if feature["properties"]["osm_id"] == 2)
                 self.assertEqual(zone["properties"]["maxspeed_class"], "30_Zone")
 
+    def test_indicator_exports_keep_inactive_sources_before_playground_compaction(self):
+        streets = gpd.GeoDataFrame([
+            create_gdf_entry({"id": 1}, "residential", [(11, 48), (11.001, 48)],
+                             {"highway": "residential", "maxspeed": "50"}),
+        ], crs="EPSG:4326")
+        buildings = {}
+        for layer, amenities in (
+            ("playgrounds", ["playground", "playground"]),
+            ("educational_buildings", ["kindergarten", "school"]),
+            ("hospitals", ["hospital", "hospital"]),
+            ("disability_facilities", ["social_facility"] * 4),
+        ):
+            retrieval = BuildingRetrieval(layer, {"amenity": list(set(amenities))})
+            raw = {"elements": [
+                {"type": "node", "id": i + 10, "lat": 48, "lon": 11 + i * 0.001,
+                 "tags": {"amenity": amenity, "name": f"Facility {i}"}}
+                for i, amenity in enumerate(amenities)
+            ]}
+            retrieval._fetch_raw_cached = lambda bbox: raw
+            with redirect_stdout(io.StringIO()):
+                features = retrieval.fetch("München")
+            features["potential_candidate"] = [False, True] * (len(features) // 2)
+            if layer == "disability_facilities":
+                features["facility_status"] = [
+                    "confirmed_disabled", "confirmed_disabled", "target_group_unknown", "different_target_group",
+                ]
+            buildings[layer] = features
+        zebras = gpd.GeoDataFrame({"potential_candidate": [], "street": []},
+                                 geometry=[], crs=streets.crs)
+        for compact in (False, True):
+            with self.subTest(compact=compact), tempfile.TemporaryDirectory() as directory:
+                with redirect_stdout(io.StringIO()):
+                    GeoJsonCreator.create_geojson_layer_files(
+                        directory, streets.iloc[:0].assign(feature_type=""), streets, zebras, buildings,
+                        compact_playgrounds=compact,
+                    )
+                for layer in buildings:
+                    data = json.loads((Path(directory) / f"{layer}_map.geojson").read_text())
+                    properties = [feature["properties"] for feature in data["features"]]
+                    self.assertEqual([p["osm_id"] for p in properties], [10, 11])
+                    self.assertEqual([p["potential_candidate"] for p in properties], [False, True])
+                    self.assertTrue(all("popup_content" in p for p in properties))
+                full = json.loads((Path(directory) / "playgrounds.geojson").read_text())
+                self.assertEqual(len(full["features"]), 1 if compact else 2)
+                full = json.loads((Path(directory) / "disability_facilities.geojson").read_text())
+                self.assertEqual(len(full["features"]), 4)
+
 
 if __name__ == "__main__":
     unittest.main()

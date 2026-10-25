@@ -9,9 +9,6 @@ Tempo 30 Indikatoren: >-
 
 Spielplätze: >-
   Spielplätze gelten als privilegierte Orte zum besonderen Schutz von Kindern.
-
-Zebrastreifen: >-
-  Bei Fußgängerüberwegen kann erleichtert Tempo 30 angeordnet werden.
   
 Einrichtungen für Menschen mit Behinderung: >-
   Einrichtungen für Menschen mit Behinderung, etwa Wohnheime, Tagesstätten oder
@@ -31,7 +28,12 @@ Senioren- und Pflegeeinrichtungen: >-
   Alten- und Pflegeheime zählen als sensible soziale Einrichtungen zum Schutz
   vulnerabler und mobilitätseingeschränkter Menschen.
 
+Zebrastreifen: >-
+  Bei Fußgängerüberwegen kann erleichtert Tempo 30 angeordnet werden.
 
+# Gruppe: Tempo-30-Potenziale
+Tempo-30-Potenziale: >-
+  Straßenabschnitte, an denen ein Tempolimit von 30 km/h aufgrund verschiedener Faktoren sinnvoll ist.
 
 Straßenabschnitte mit Tempo-30-Potenzial: >-
   Rot: Potenzial an Einrichtungen und Spielplätzen. Orange: Zebrastreifen-Potenzial.

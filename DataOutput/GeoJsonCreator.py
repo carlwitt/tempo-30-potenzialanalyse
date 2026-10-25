@@ -20,7 +20,6 @@ from DataOutput.ConditionalGapMetadata import ConditionalGapMetadata
 from DataOutput.DistrictStatsCreator import DistrictStatsCreator
 from DataOutput.FacilityPopupCreator import FacilityPopupCreator
 from DataOutput.FacilityStreetSegments import FacilityStreetSegments
-from DataOutput.MapFacilityLayer import MapFacilityLayer
 from DataOutput.OSMVerificationMetadata import OSMVerificationMetadata
 from DataOutput.PlaygroundConsolidation import PlaygroundConsolidation
 from DataOutput.PotentialStreetConsolidation import PotentialStreetConsolidation
@@ -350,6 +349,15 @@ class GeoJsonCreator:
                 export_data_dict[building_type]["osm_id"] = export_data_dict[building_type]["osm_id"].astype(object)
                 export_data_dict[building_type].loc[external, "osm_id"] = None
 
+        # The optional indicator layers need both active and inactive sources
+        # for the color/gray legend. Keep playground points before the legacy
+        # export clusters or hides them; retain the existing file contracts.
+        for layer in building_data:
+            features = export_data_dict[layer]
+            if layer == "disability_facilities":
+                features = features.loc[features["facility_status"].eq("confirmed_disabled")]
+            export_data_dict[f"{layer}_map"] = features.copy()
+
         export_data_dict["playgrounds"] = PlaygroundConsolidation.summarize_playground_features(
             playgroundGDF=export_data_dict["playgrounds"], compact=compact_playgrounds,
         )
@@ -358,11 +366,6 @@ class GeoJsonCreator:
             for layer, features in export_data_dict.items():
                 if layer != "district_stats":
                     export_data_dict[layer] = AreaScope.clip_geometries(features, districts_gdf)
-
-        # Keep complete facility snapshots for statistics and verification;
-        # uMap receives a smaller view without already covered facilities.
-        for layer in building_data:
-            export_data_dict[f"{layer}_map"] = MapFacilityLayer.select(export_data_dict[layer], layer)
 
         # Export
         for entry in export_data_dict.keys():

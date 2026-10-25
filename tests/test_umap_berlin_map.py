@@ -75,7 +75,7 @@ class BerlinUMapTests(unittest.TestCase):
         disability = next(layer["properties"] for layer in layers
                           if layer["properties"]["name"] == "Einrichtungen für Menschen mit Behinderung")
         self.assertEqual({rule["condition"] for rule in disability["rules"]}, {
-            "potential_candidate=true",
+            "potential_candidate=false", "potential_candidate=true",
         })
         self.assertNotIn("Orange markierte Objekte", disability["description"])
         self.assertNotIn("graue Objekte", disability["description"])
@@ -91,8 +91,10 @@ class BerlinUMapTests(unittest.TestCase):
 
         build_umap_configuration.complete_indicators(indicators)
 
+        disability = next(layer["properties"] for layer in indicators["layers"]
+                          if layer["properties"]["name"] == "Einrichtungen für Menschen mit Behinderung")
         self.assertEqual({rule["condition"] for rule in disability["rules"]},
-                         {"potential_candidate=true"})
+                         {"potential_candidate=false", "potential_candidate=true"})
 
     def test_yaml_contains_all_layer_descriptions_without_changing_text(self):
         with (HERE / "layer_descriptions.yaml").open(encoding="utf-8") as source:
@@ -210,12 +212,41 @@ class BerlinUMapTests(unittest.TestCase):
 
         original = zebra_properties(self.backup)
         generated = zebra_properties(self.generated)
-        for key in ("iconUrl", "iconOpacity", "color", "rules", "fill"):
+        for key in ("iconUrl", "fill"):
             self.assertEqual(generated[key], original[key], key)
         self.assertNotIn("iconClass", generated)
         self.assertTrue(generated["stroke"])
         self.assertEqual(generated["weight"], 4)
         self.assertEqual(generated["remoteData"]["url"], original["remoteData"]["url"])
+
+    def test_indicator_categories_and_inactive_state_use_four_colors_and_gray(self):
+        layers = {layer["properties"]["name"]: layer["properties"]
+                  for layer in self.generated["layers"][0]["layers"]}
+        cases = (
+            ("Spielplätze", "Spielplatz", "#76b7b2"),
+            ("Schulen und Kitas", "Kindergarten", "#76b7b2"),
+            ("Schulen und Kitas", "Schule", "#4e79a7"),
+            ("Krankenhäuser", "Krankenhaus", "#af7aa1"),
+            ("Senioren- und Pflegeeinrichtungen", "Pflegeheim", "#af7aa1"),
+            ("Einrichtungen für Menschen mit Behinderung", "Einrichtung", "#af7aa1"),
+            ("Zebrastreifen", "", "#f28e2c"),
+        )
+        for name, facility_type, active_color in cases:
+            for active in (False, True):
+                with self.subTest(layer=name, facility_type=facility_type, active=active):
+                    feature = {"potential_candidate": str(active).lower(), "facility_type": facility_type}
+                    # uMap resolves each property from the first matching rule.
+                    color = layers[name]["color"]
+                    for rule in layers[name]["rules"]:
+                        key, value = rule["condition"].split("=", 1)
+                        if feature.get(key) == value and "color" in rule["properties"]:
+                            color = rule["properties"]["color"]
+                            break
+                    self.assertEqual(color, active_color if active else "#9e9e9e")
+        self.assertEqual({rule["name"] for rule in layers["Krankenhäuser"]["rules"]}, {
+            "Krankenhäuser mit möglichem Einfluss auf eine Tempo-30-Anordnung",
+            "Krankenhäuser ohne Auswirkungen auf die aktuelle Geschwindigkeitsbeschränkung",
+        })
 
     def test_street_layer_uses_section_name_and_numeric_gap_lengths(self):
         potential = self.generated["layers"][1]["layers"][0]["properties"]
