@@ -1,10 +1,23 @@
+"""Draw an optional diagnostic plot of the retrieved streets and candidates.
+
+Coloring a road by its classified speed makes missing or implausible OSM
+tags visible during development. The reviewable GeoJSON and uMap layers
+are built separately by the export path.
+"""
+
 import matplotlib.pyplot as plt
 
+from DataRetrieval.RoadClassification import RoadClassification
+
 SPEED_COLOR_MAP = {
+    "walk": "#90EE90",
+    "30_Zone": "#1f9e89",
+    "5": "#90EE90",
+    "8": "#90EE90",
     "10": "#90EE90",              # lightgreen
+    "15": "#90EE90",
     "20" : "#90EE90",
     "30": "#198119",               # green
-    # Tempo 30 Zonendaten nicht existent in München # "30_Zone": "#1f9e89",         # teal
     "Zeitweise_30" : "#CBFD07",
     "50": "lightblue", # "#fca456",       
     "60": "darkblue",
@@ -120,7 +133,8 @@ class StreetPlot:
     def plot_map(streets_gdf, zebra_gdf = None, bdg_data = None, figsize=(9, 9), debug_endpoints: bool = False):
         streets_gdf = streets_gdf.copy()
 
-        streets_gdf.loc[streets_gdf["conditional_speed"] == "30", "maxspeed_class"] = "Zeitweise_30"
+        permanent = streets_gdf["maxspeed_class"].map(RoadClassification.is_covered_speed)
+        streets_gdf.loc[(streets_gdf["conditional_speed"] == "30") & ~permanent, "maxspeed_class"] = "Zeitweise_30"
 
         # assign colors, fallback = gray
         streets_gdf["plot_color"] = streets_gdf["maxspeed_class"].map(SPEED_COLOR_MAP).fillna("#7f7f7f")

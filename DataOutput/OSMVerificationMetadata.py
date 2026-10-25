@@ -1,7 +1,13 @@
-"""Show the OSM source and its institution metadata in facility popups."""
+"""Expose the OSM facts behind a facility shown on the map.
+
+A point named "Kita" alone cannot explain why it was classified as a
+kindergarten. Add its OSM link, type and available institution tags to the
+popup so reviewers can inspect both the classification and the source.
+"""
 
 import geopandas as gpd
 import pandas as pd
+from DataRetrieval.AdditionalFeatures import facility_url
 
 
 class OSMVerificationMetadata:
@@ -46,12 +52,15 @@ class OSMVerificationMetadata:
 
         for _, feature in result.iterrows():
             name = feature["name"]
-            lines = [f"Name laut OSM: {name}" if pd.notna(name) and str(name).strip()
-                     else "Kein Name in OSM erfasst."]
+            source = feature.get("source_name") if feature.get("element_type") == "external" else "OSM"
+            if source == "OSM" and isinstance(feature.get("additional_sources"), list) and feature["additional_sources"]:
+                source = "OSM / ergänzenden Quellen"
+            lines = [f"Name laut {source}: {name}" if pd.notna(name) and str(name).strip()
+                     else f"Kein Name in {source} erfasst."]
             facility_type = OSMVerificationMetadata._facility_type(feature, category)
             facility_types.append(facility_type)
             if facility_type:
-                lines.append(f"Einrichtungstyp laut OSM: {facility_type}")
+                lines.append(f"Einrichtungstyp laut {source}: {facility_type}")
             target = feature.get("social_facility_for")
             if pd.notna(target) and str(target).strip():
                 lines.append(f"OSM-Zielgruppe: {target}")
@@ -68,7 +77,8 @@ class OSMVerificationMetadata:
                 if pd.notna(value) and str(value).strip() and value != name:
                     lines.append(f"{label}: {value}")
 
-            lines.append(f"[[{feature['osm_url']}|OSM-Objekt prüfen]]")
+            label = "Externe Quelle prüfen" if feature.get("element_type") == "external" else "OSM-Objekt prüfen"
+            lines.append(f"[[{facility_url(feature)}|{label}]]")
             descriptions.append("\n".join(lines))
 
         result["description"] = descriptions

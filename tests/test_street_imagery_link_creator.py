@@ -1,3 +1,8 @@
+"""A facility entrance can be closer to the relevant road than its center. Check
+street snapping, distance limits and entrance selection so imagery links do
+not point at an unrelated road.
+"""
+
 import unittest
 from datetime import date
 
@@ -49,13 +54,14 @@ class StreetImageryLinkCreatorTests(unittest.TestCase):
         self.assertTrue(features.description.isna().iloc[1])
         self.assertEqual(features.description.iloc[2], "")
 
-    def test_empty_streets_cannot_be_snapped_to(self):
+    def test_empty_streets_leave_photo_links_empty(self):
         features = gpd.GeoDataFrame(geometry=[Point(10, 5)], crs="EPSG:3857")
         streets = gpd.GeoDataFrame(geometry=[], crs="EPSG:3857")
         streets["maxspeed_class"] = []
 
-        with self.assertRaisesRegex(ValueError, "at least one T50 street segment"):
-            StreetImageryLinkCreator.add_links(features, streets)
+        result = StreetImageryLinkCreator.add_links(features, streets)
+        self.assertIsNone(result.google_street_view_url.iloc[0])
+        self.assertIsNone(result.mapillary_url.iloc[0])
 
     def test_does_not_fall_back_to_t30_street(self):
         features = gpd.GeoDataFrame(geometry=[Point(10, 5)], crs="EPSG:3857")
@@ -65,8 +71,9 @@ class StreetImageryLinkCreatorTests(unittest.TestCase):
             crs="EPSG:3857",
         )
 
-        with self.assertRaisesRegex(ValueError, "at least one T50 street segment"):
-            StreetImageryLinkCreator.add_links(features, streets)
+        result = StreetImageryLinkCreator.add_links(features, streets)
+        self.assertIsNone(result.google_street_view_url.iloc[0])
+        self.assertIsNone(result.mapillary_url.iloc[0])
 
     def test_skips_closer_campus_road(self):
         features = gpd.GeoDataFrame(geometry=[Point(10, 5)], crs="EPSG:3857")
@@ -84,6 +91,27 @@ class StreetImageryLinkCreatorTests(unittest.TestCase):
         point = gpd.GeoSeries([Point(10, 20)], crs="EPSG:3857").to_crs("EPSG:4326").iloc[0]
         self.assertIn(f"viewpoint={point.y:.7f}%2C{point.x:.7f}", result.description.iloc[0])
         self.assertIn(f"lat={point.y:.7f}&lng={point.x:.7f}", result.description.iloc[0])
+
+    def test_distant_t50_street_does_not_create_misleading_photo_link(self):
+        features = gpd.GeoDataFrame(
+            {"description": ["Prüfhinweis"], "osm_node_ids": [[]]},
+            geometry=[Point(10, 150)], crs="EPSG:3857",
+        )
+        streets = gpd.GeoDataFrame(
+            {"maxspeed_class": ["T50+"]},
+            geometry=[LineString([(0, 0), (20, 0)])], crs="EPSG:3857",
+        )
+
+        result = StreetImageryLinkCreator.add_links(
+            features, streets, date(2024, 1, 1),
+            main_entrances=gpd.GeoDataFrame(
+                {"osm_id": []}, geometry=[], crs="EPSG:3857",
+            ),
+        )
+
+        self.assertIsNone(result.google_street_view_url.iloc[0])
+        self.assertIsNone(result.mapillary_url.iloc[0])
+        self.assertIn("keine Tempo-50/60-Straße innerhalb von 100 m", result.description.iloc[0])
 
     def test_uses_only_main_entrances_on_the_osm_way(self):
         features = gpd.GeoDataFrame(

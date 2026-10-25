@@ -1,9 +1,16 @@
-"""Build concise facility popups without discarding detailed source metadata."""
+"""Summarize a facility's nearby proposed and already slow streets.
+
+A school's raw OSM metadata can be lengthy while its map popup needs the
+matched road names, speeds and source links. Build that readable summary
+from the exact street matches; keep the original metadata in the export
+so reviewers can still verify the school and its source.
+"""
 
 from collections import defaultdict
 
 import geopandas as gpd
 import pandas as pd
+from DataRetrieval.AdditionalFeatures import facility_url
 
 
 class FacilityPopupCreator:
@@ -14,7 +21,7 @@ class FacilityPopupCreator:
         return None
 
     @staticmethod
-    def _related(segments: gpd.GeoDataFrame, layer: str) -> dict[int, list]:
+    def _related(segments: gpd.GeoDataFrame, layer: str) -> dict[int | str, list]:
         related = defaultdict(list)
         for _, segment in segments.loc[segments["facility_layer"] == layer].iterrows():
             related[segment["facility_id"]].append(segment)
@@ -34,10 +41,19 @@ class FacilityPopupCreator:
             name = FacilityPopupCreator._text(facility.get("name"))
             kind = FacilityPopupCreator._text(facility.get("facility_type"))
             title = name or kind or "Einrichtung ohne OSM-Namen"
-            osm_url = FacilityPopupCreator._text(facility.get("osm_url"))
-            parts = [f"[[{osm_url}|{title}]]" if osm_url else title]
+            url = FacilityPopupCreator._text(facility_url(facility))
+            external = facility.get("element_type") == "external"
+            parts = [title if external else (f"[[{url}|{title}]]" if url else title)]
             if kind:
                 parts.append(f"Einrichtung: {kind}")
+            if external:
+                source_name = ("Amtliches Berliner Kita-Verzeichnis" if facility["source_name"] == "berlin_kita"
+                               else facility["source_name"])
+                source_link = f"[[{url}|{source_name}]]" if url else source_name
+                parts.append(f"Quelle: {source_link} (kein zugeordnetes OSM-Objekt)")
+            elif isinstance(facility.get("additional_sources"), list) and facility["additional_sources"]:
+                names = ", ".join(dict.fromkeys(source["source_name"] for source in facility["additional_sources"]))
+                parts.append(f"OSM mit ergänzenden Angaben aus: {names}")
 
             # Only show available metadata, so unnamed or operator-less places
             # do not acquire empty labels in the public popup.

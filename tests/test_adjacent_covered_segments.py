@@ -1,3 +1,8 @@
+"""A Kita's candidate road may already continue as Tempo 30. Exercise network
+tracing, speed labels and the 500 m limit so a side street or a distant road
+does not appear as covered context.
+"""
+
 import unittest
 
 import geopandas as gpd
@@ -8,6 +13,21 @@ from PotentialCalculation.PotentialCalculationResult import PotentialCalculation
 
 
 class AdjacentCoveredSegmentsTests(unittest.TestCase):
+    def test_living_street_counts_as_covered_without_numeric_limit(self):
+        road = {"maxspeed_class": "walk", "conditional_speed": None}
+
+        self.assertTrue(AdjacentCoveredSegments._covered(road))
+        self.assertEqual(
+            AdjacentCoveredSegments._status(road),
+            "Verkehrsberuhigter Bereich (Schrittgeschwindigkeit)",
+        )
+
+    def test_permanent_zone_takes_priority_over_redundant_conditional_speed(self):
+        road = {"maxspeed_class": "30_Zone", "conditional_speed": "30"}
+
+        self.assertEqual(AdjacentCoveredSegments._status(road), "Tempo-30-Zone")
+        self.assertIsNone(AdjacentCoveredSegments._condition_detail(road))
+
     @staticmethod
     def _facility(x=90):
         return gpd.GeoDataFrame(

@@ -1,8 +1,14 @@
-from typing import List
+"""Find eligible faster roads close to a facility's actual geometry.
+
+A school can border a 50 km/h street even when its center is distant.
+Measure in a metric CRS and retain the source-to-road pair, so the
+proposal and its popup identify the school that supports each segment.
+"""
+
 import geopandas as gpd
 
-from PotentialCalculation.PotentialCalculationResult import PotentialCalculationResult
 from PotentialCalculation.FacilityStreetRelevance import FacilityStreetRelevance
+from PotentialCalculation.PotentialCalculationResult import PotentialCalculationResult
 
 
 class ProximityPotential:
@@ -24,16 +30,7 @@ class ProximityPotential:
         if features_gdf is None or features_gdf.empty:
             return PotentialCalculationResult([], [])
 
-        # Only explicitly tagged 50/60 km/h roads without conditional T30 qualify.
-        tempo50_or_60 = FacilityStreetRelevance.traffic_streets(streets_gdf)
-        tempo50_or_60 = tempo50_or_60[
-            tempo50_or_60["maxspeed_class"].isin({"50", "60"})
-        ].copy()
-
-        # Filter out streets with conditional tempo 30
-        tempo50_or_60 = tempo50_or_60.loc[
-            tempo50_or_60["conditional_speed"] != "30"
-        ]
+        tempo50_or_60 = FacilityStreetRelevance.potential_streets(streets_gdf)
 
         if tempo50_or_60.empty:
             return PotentialCalculationResult([], [])
@@ -52,7 +49,9 @@ class ProximityPotential:
         # Buffer features
         # -----------------------------
         features_buffered = features.copy()
-        features_buffered["geometry"] = features.geometry.buffer(search_distance_m)
+        features_buffered["geometry"] = features.geometry.buffer(max(
+            search_distance_m, FacilityStreetRelevance.ADDRESSED_EXTERNAL_POINT_DISTANCE_M,
+        ))
 
         features_buffered = features_buffered[["osm_id", "geometry"]].rename(
             columns={"osm_id": "feature_id"}
@@ -67,6 +66,15 @@ class ProximityPotential:
             how="inner",
             predicate="intersects"
         )
+
+        joined = joined.loc[[
+            street.geometry.distance(features.geometry.loc[feature_index])
+            <= FacilityStreetRelevance.search_distance(
+                features.loc[feature_index], street, search_distance_m,
+            )
+            for _, street in joined.iterrows()
+            for feature_index in [street["index_right"]]
+        ]]
 
         # -----------------------------
         # Result

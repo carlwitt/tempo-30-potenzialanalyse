@@ -1,9 +1,16 @@
-"""Turn connected potential ways into readable street sections for export."""
+"""Group adjacent potential ways without hiding meaningful connections.
+
+OSM may split one proposed road into several short ways. Join compatible
+neighbors for display and discard only isolated fragments; retain a short
+way inside a longer gap so the exported section remains continuous.
+"""
 
 import geopandas as gpd
 import pandas as pd
 from shapely.geometry import MultiLineString, Point
 from shapely.ops import linemerge, unary_union
+
+from DataOutput.SpeedLimitDescription import SpeedLimitDescription
 
 
 class PotentialStreetConsolidation:
@@ -124,7 +131,7 @@ class PotentialStreetConsolidation:
         keys = []
         for _, street in metric.iterrows():
             name = street["name"]
-            keys.append((str(name).strip(), street["maxspeed_class"],
+            keys.append((str(name).strip(), SpeedLimitDescription.describe(street),
                          PotentialStreetConsolidation._dependency_key(street["gap_required_potentials"]))
                         if street["is_conditional_gap"] and pd.notna(name) and str(name).strip()
                         else None)
@@ -138,6 +145,16 @@ class PotentialStreetConsolidation:
             row["gap_length_with_prerequisites_m"] = None
             if keys[members[0]] is not None:
                 row["gap_length_current_m"] = None
+                row["gap_existing_street_osm_ids"] = sorted({
+                    int(anchor_id)
+                    for index in members
+                    for anchor_id in metric.iloc[index].get("gap_existing_street_osm_ids", [])
+                })
+                row["gap_corridor_street_osm_ids"] = sorted({
+                    int(street_id)
+                    for index in members
+                    for street_id in metric.iloc[index].get("gap_corridor_street_osm_ids", [])
+                })
                 geometry = unary_union(metric.geometry.iloc[members].tolist())
                 row["geometry"] = linemerge(geometry) if isinstance(geometry, MultiLineString) else geometry
                 length = sum(metric.geometry.iloc[index].length for index in members)

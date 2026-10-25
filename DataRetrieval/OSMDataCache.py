@@ -1,3 +1,10 @@
+"""Cache complete Overpass responses for repeatable local analysis.
+
+An Overpass timeout may return JSON with a ``remark`` but an incomplete
+``elements`` list. Validate before saving and after loading, so a partial
+Berlin road or facility query cannot silently become the analysis input.
+"""
+
 from typing import Tuple
 import hashlib
 from pathlib import Path
@@ -14,7 +21,9 @@ class OSMDataCache:
 
         if cache_file.exists():
             with open(cache_file, "r", encoding="utf-8") as f:
-                return json.load(f)
+                data = json.load(f)
+            self._validate(data)
+            return data
         
         return None
 
@@ -29,6 +38,14 @@ class OSMDataCache:
         return self.cache_dir / f"{self.datatype}_{self._bbox_cache_key(bbox)}.json"
     
     def store_data(self, data, bbox):
+        self._validate(data)
         cache_file = self._cache_path(bbox)
         with open(cache_file, "w", encoding="utf-8") as f:
             json.dump(data, f)
+
+    @staticmethod
+    def _validate(data):
+        if not isinstance(data, dict) or not isinstance(data.get("elements"), list):
+            raise ValueError("Invalid Overpass response: missing elements list")
+        if data.get("remark"):
+            raise ValueError(f"Incomplete Overpass response: {data['remark']}")

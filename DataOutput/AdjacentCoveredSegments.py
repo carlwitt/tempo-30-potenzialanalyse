@@ -1,4 +1,10 @@
-"""Find covered street continuations next to facility potential roads."""
+"""Show how far a facility's adjoining street is already slow.
+
+A Kita's proposed Tempo-30 section may join an existing Tempo-30 zone.
+Trace continuous, suitably aligned OSM ways from that section for at most
+500 m and label their current speed. The map can then show the covered
+continuation without suggesting that it needs another speed reduction.
+"""
 
 import math
 from collections import defaultdict
@@ -8,27 +14,33 @@ import pandas as pd
 from shapely.geometry import LineString, Point
 from shapely.ops import nearest_points, substring
 
+from DataRetrieval.RoadClassification import RoadClassification
+from DataRetrieval.AdditionalFeatures import facility_url
+
 
 class AdjacentCoveredSegments:
     MAX_DISTANCE_M = 500
     ENDPOINT_TOLERANCE_M = 0.5
-    COVERED_CLASSES = {"10", "20", "30", "30_Zone"}
 
     @staticmethod
     def _covered(road) -> bool:
-        return road.get("conditional_speed") == "30" or road["maxspeed_class"] in AdjacentCoveredSegments.COVERED_CLASSES
+        return road.get("conditional_speed") == "30" or RoadClassification.is_covered_speed(road["maxspeed_class"])
 
     @staticmethod
     def _status(road) -> str:
-        if road.get("conditional_speed") == "30":
-            return "Bedingtes Tempo 30"
         if road["maxspeed_class"] == "30_Zone":
             return "Tempo-30-Zone"
+        if road["maxspeed_class"] == "walk":
+            return "Verkehrsberuhigter Bereich (Schrittgeschwindigkeit)"
+        if RoadClassification.is_covered_speed(road["maxspeed_class"]):
+            return f"Tempo {road['maxspeed_class']}"
+        if road.get("conditional_speed") == "30":
+            return "Bedingtes Tempo 30"
         return f"Tempo {road['maxspeed_class']}"
 
     @staticmethod
     def _condition_detail(road) -> str | None:
-        if road.get("conditional_speed") != "30":
+        if road.get("conditional_speed") != "30" or RoadClassification.is_covered_speed(road["maxspeed_class"]):
             return None
         days = road.get("cond_speed_days")
         start = road.get("cond_speed_starttime")
@@ -115,7 +127,7 @@ class AdjacentCoveredSegments:
                 "facility_layer": layer,
                 "facility_id": facility["osm_id"],
                 "facility_name": facility["name"] if pd.notna(facility["name"]) else "Einrichtung ohne OSM-Namen",
-                "facility_osm_url": facility["osm_url"],
+                "facility_osm_url": facility_url(facility),
                 "source_street_osm_id": source["osm_id"],
                 "street_osm_id": road["osm_id"],
                 "street_name": road["name"] if pd.notna(road["name"]) else "Straße ohne OSM-Namen",

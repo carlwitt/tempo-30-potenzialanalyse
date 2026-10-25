@@ -1,0 +1,54 @@
+Tempo 30 Indikatoren: >-
+  Lokale Gegebenheiten wie Schulen, Kitas, Zebrastreifen, etc. die ein Tempolimit nahelegen.
+  Grundlage ist § 45 StVO, der eine Anordnung ohne Nachweis einer qualifizierten Gefahrenlage ermöglicht.
+  Bei Einrichtungen wie Schulen, Kitas oder ähnlichen Orten setzt dies nach VwV-StVO einen direkten Straßenzugang oder starken Ziel- und
+  Quellverkehr im Nahbereich voraus; die Anordnung ist in der Regel auf den unmittelbaren Bereich und insgesamt höchstens 300 m zu begrenzen.
+
+Spielplätze: >-
+  Spielplätze gelten als privilegierte Orte zum besonderen Schutz von Kindern.
+
+Zebrastreifen: >-
+  Bei Fußgängerüberwegen kann erleichtert Tempo 30 angeordnet werden.
+  
+Einrichtungen für Menschen mit Behinderung: >-
+  Einrichtungen für Menschen mit Behinderung, etwa Wohnheime, Tagesstätten oder
+  Werkstätten, sind seit der Reform ausdrücklich als sensible Orte benannt.
+  
+Krankenhäuser: >-
+  Krankenhäuser sind als sensible Gesundheitseinrichtungen genannt.
+  
+Schulen und Kitas: >-
+  Bildungseinrichtungen umfassen hier OSM-Schulen und Kitas. 
+  Gemäß § 45 StVO kann im unmittelbaren Bereich allgemeinbildender Schulen,
+  Förderschulen und Kindertagesstätten erleichtert Tempo 30 angeordnet werden.
+  Hochfrequentierte Schulwege sind ebenfalls gesetzlich genannt, werden aber in diesem
+  Einrichtungs-Layer nicht erfasst.
+
+Senioren- und Pflegeeinrichtungen: >-
+  Alten- und Pflegeheime zählen als sensible soziale Einrichtungen zum Schutz
+  vulnerabler und mobilitätseingeschränkter Menschen.
+  
+Straßenabschnitte mit Tempo-30-Potenzial: >-
+  Rot: Potenzial an Einrichtungen und Spielplätzen. Orange: Zebrastreifen-Potenzial.
+  Violett: direkter Lückenschluss samt durchlaufenen Abschnitten; grün: bestehende Tempo-30-Anschlüsse.
+  Bei mehreren Gründen gilt für die Farbe Lückenschluss vor Zebrastreifen vor Einrichtung;
+  alle Gründe stehen im Popup. Bedingte Lückenschlüsse liegen in einem eigenen Layer;
+  isolierte kurze Abschnitte werden ausgeblendet.
+
+Bedingte Lückenschlüsse: >-
+  Violett gestrichelt: bedingter Lückenschluss und weitere durchlaufene Straßenabschnitte.
+  Grün durchgezogen: bestehender, dauerhaft geltender Tempo-30-Anschluss.
+  Der noch offene Anschluss und sein auslösender Ort stehen im Lücken-Popup.
+  Die dargestellte OSM-Geometrie legt keine Anordnungsgrenze fest.
+
+Bereits abgedeckte Anschlussabschnitte: >-
+  Bereits langsame Straßenfortsetzungen bis 500 m entlang der Straße;
+  bedingtes Tempo 30 ist blau gestrichelt.
+
+accidents: >-
+  Unfallatlas-Unfälle mit Personenschaden in {area_name} seit {accident_start_year}.
+  Zeigt die aggregierte Unfalldichte wobei schwere Unfälle stärker gewichtet werden.
+
+Bezirksstatistiken: >-
+  Prozentsätze realisierter Potenziale. Zusätzliche sind absolute Werte pro Bezirk in der Ebene als weitere Eigenschaften hinterlegt.
+  Diese können über den Datenbrowser eingesehen werden.

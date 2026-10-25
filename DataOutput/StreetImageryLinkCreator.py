@@ -1,4 +1,10 @@
-"""Create uMap popup links to street-level imagery near mapped locations."""
+"""Point map reviewers at imagery of the relevant street location.
+
+For a Kita with an entrance away from its polygon center, imagery at the
+center can show the wrong road. Use the entrance when available, snap to
+the nearby candidate street and add Street View or Mapillary links to
+the popup; the link then reflects the location being assessed.
+"""
 
 from datetime import date
 
@@ -8,6 +14,8 @@ from shapely.strtree import STRtree
 
 
 class StreetImageryLinkCreator:
+    MAX_SNAP_DISTANCE_M = 100
+
     @staticmethod
     def _location(geometry):
         if isinstance(geometry, (LineString, MultiLineString)):
@@ -43,7 +51,18 @@ class StreetImageryLinkCreator:
             if isinstance(geometry, (LineString, MultiLineString)) and not geometry.is_empty
         ]
         if not segments:
-            raise ValueError("Street imagery links require at least one T50 street segment")
+            result["google_street_view_url"] = [None] * len(result)
+            result["mapillary_url"] = [None] * len(result)
+            if main_entrances is not None:
+                note = "keine Tempo-50/60-Straße im Gebiet"
+                result["imagery_reference"] = [note] * len(result)
+                descriptions = result["description"] if "description" in result else [None] * len(result)
+                result["description"] = [
+                    "\n".join(part for part in (description, f"Bildstandort: {note}")
+                              if isinstance(part, str) and part.strip())
+                    for description in descriptions
+                ]
+            return result
 
         tree = STRtree(segments)
         entrance_by_id = {}
@@ -73,7 +92,11 @@ class StreetImageryLinkCreator:
                 location = StreetImageryLinkCreator._location(feature.geometry)
                 references.append("angenähert; kein OSM-Haupteingang am Objekt")
             segment = segments[tree.nearest(location)]
-            snapped_points.append(segment.interpolate(segment.project(location)))
+            if location.distance(segment) > StreetImageryLinkCreator.MAX_SNAP_DISTANCE_M:
+                snapped_points.append(None)
+                references[-1] = "keine Tempo-50/60-Straße innerhalb von 100 m"
+            else:
+                snapped_points.append(segment.interpolate(segment.project(location)))
 
         # Both providers use WGS84 latitude/longitude, regardless of input CRS.
         viewpoints = gpd.GeoSeries(snapped_points, crs=metric_crs).to_crs("EPSG:4326")
@@ -85,6 +108,12 @@ class StreetImageryLinkCreator:
         street_view_urls = []
         mapillary_urls = []
         for description, point, reference in zip(descriptions, viewpoints, references):
+            if point is None:
+                street_view_urls.append(None)
+                mapillary_urls.append(None)
+                note = f"Bildstandort: {reference}" if main_entrances is not None else ""
+                popup_text.append("\n".join(part for part in (description, note) if isinstance(part, str) and part.strip()))
+                continue
             street_view_url = f"https://www.google.com/maps/@?api=1&map_action=pano&viewpoint={point.y:.7f}%2C{point.x:.7f}"
             mapillary_url = f"https://www.mapillary.com/app/?lat={point.y:.7f}&lng={point.x:.7f}&z=17&dateFrom={mapillary_since.isoformat()}"
             street_view_urls.append(street_view_url)

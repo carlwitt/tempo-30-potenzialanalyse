@@ -1,0 +1,25 @@
+{
+  "sources": [
+    {
+      "name": "berlin_kita",
+      "areas": ["berlin"],
+      "layer": "educational_buildings",
+      "url": "https://gdi.berlin.de/services/wfs/kita",
+      "public_url": "https://daten.berlin.de/datensaetze/kindertagesstatten-wfs-d03b94d2",
+      "type_name": "kita:kita",
+      "request_crs": "EPSG:25833",
+      "sort_by": "e_nr",
+      "license_url": "https://www.govdata.de/dl-de/zero-2-0",
+      "tags": {"amenity": "kindergarten"},
+      "fields": {
+        "name": "e_name",
+        "street": "e_strasse",
+        "housenumber": "e_hnr",
+        "postcode": "e_plz",
+        "operator": "t_name",
+        "website": "e_web",
+        "facility_source_id": "e_nr"
+      }
+    }
+  ]
+}

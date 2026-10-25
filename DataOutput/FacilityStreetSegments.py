@@ -1,4 +1,10 @@
-"""Expose the exact OSM street ways matched to facility potential candidates."""
+"""Map the street pieces supported by each facility candidate.
+
+A long OSM way can pass a Kita but extend far beyond it. Clip each matched
+50/60 km/h way to the facility's search area and retain its OSM identity.
+This shows the relevant part of the proposal and lets reviewers inspect
+the source way without mistaking its full length for potential.
+"""
 
 from collections import defaultdict
 
@@ -7,6 +13,9 @@ import pandas as pd
 from shapely.geometry import LineString, MultiLineString
 
 from DataOutput.PotentialStreetConsolidation import PotentialStreetConsolidation
+from DataOutput.SpeedLimitDescription import SpeedLimitDescription
+from DataRetrieval.AdditionalFeatures import facility_url
+from PotentialCalculation.FacilityStreetRelevance import FacilityStreetRelevance
 
 
 class FacilityStreetSegments:
@@ -36,7 +45,8 @@ class FacilityStreetSegments:
                 speed = street["maxspeed_class"]
                 distance = round(facility.geometry.distance(street.geometry), 1)
                 street_url = f"https://www.openstreetmap.org/way/{street_id}"
-                nearby = street.geometry.intersection(facility.geometry.buffer(20))
+                search_distance = FacilityStreetRelevance.search_distance(facility, street, 20)
+                nearby = street.geometry.intersection(facility.geometry.buffer(search_distance))
                 parts = list(nearby.geoms) if isinstance(nearby, MultiLineString) else [nearby]
                 for part in parts:
                     if not isinstance(part, LineString) or part.is_empty or part.length == 0:
@@ -45,18 +55,18 @@ class FacilityStreetSegments:
                         "facility_layer": layer,
                         "facility_id": facility_id,
                         "facility_name": facility_name,
-                        "facility_osm_url": facility["osm_url"],
+                        "facility_osm_url": facility_url(facility),
                         "street_osm_id": street_id,
                         "street_name": name,
                         "current_speed_kmh": int(speed),
                         "distance_m": distance,
                         "street_osm_url": street_url,
                         "description": (
-                            f"Tempo-30-Prüfabschnitt (innerhalb 20 m der Einrichtung)\n"
+                            f"Tempo-30-Prüfabschnitt (innerhalb {search_distance:g} m der Einrichtung)\n"
                             f"Straße: {name}\nAktuell laut OSM: {speed} km/h\n"
                             f"Anlass: {facility_name}\nAbstand zur Einrichtung: {distance:.1f} m\n"
                             f"[[{street_url}|Vollständigen OSM-Abschnitt prüfen]]\n"
-                            f"[[{facility['osm_url']}|Einrichtung prüfen]]"
+                            f"[[{facility_url(facility)}|Einrichtung prüfen]]"
                         ),
                         "geometry": part,
                     })
@@ -120,7 +130,9 @@ class FacilityStreetSegments:
     def annotate_potential_streets(streets, segments):
         result = streets.copy()
         matched = defaultdict(list)
-        for _, segment in segments.iterrows():
+        metric_streets = result.to_crs("EPSG:25832")
+        metric_segments = segments.to_crs("EPSG:25832")
+        for _, segment in metric_segments.iterrows():
             facilities = matched[segment["street_osm_id"]]
             if not any(
                 facility["facility_layer"] == segment["facility_layer"]
@@ -130,20 +142,31 @@ class FacilityStreetSegments:
                 facilities.append(segment)
 
         descriptions = []
-        for _, street in result.iterrows():
+        for position, (_, street) in enumerate(result.iterrows()):
             name = street["name"] if pd.notna(street["name"]) else "Straße ohne OSM-Namen"
             street_url = f"https://www.openstreetmap.org/way/{street['osm_id']}"
             lines = [f"Straße: [[{street_url}|{name}]]",
-                     f"Höchstgeschwindigkeit: {street['maxspeed_class']} km/h"]
+                     SpeedLimitDescription.describe(street)]
             source_ids = street.get("source_osm_ids") or [street["osm_id"]]
-            facilities = list({(facility["facility_layer"], facility["facility_id"]): facility
-                               for source_id in source_ids
-                               for facility in matched.get(source_id, [])}.values())
+            visible_geometry = metric_streets.geometry.iloc[position]
+            local_facilities = {}
+            for source_id in source_ids:
+                for facility in matched.get(source_id, []):
+                    # A long OSM way may have several separate visible clips.
+                    if visible_geometry.distance(facility.geometry) <= 1:
+                        key = (facility["facility_layer"], facility["facility_id"])
+                        local_facilities[key] = facility
+            facilities = local_facilities.values()
             if facilities:
                 lines.append("Nahe Einrichtungen:")
                 for facility in facilities:
+                    facility_label = (
+                        f"{facility['facility_name']} ([[{facility['facility_osm_url']}|amtliche Quelle]])"
+                        if isinstance(facility["facility_id"], str)
+                        else f"[[{facility['facility_osm_url']}|{facility['facility_name']}]]"
+                    )
                     lines.append(
-                        f"[[{facility['facility_osm_url']}|{facility['facility_name']}]] "
+                        f"{facility_label} "
                         f"({facility['distance_m']:.1f} m)"
                     )
             descriptions.append("\n\n".join(lines))

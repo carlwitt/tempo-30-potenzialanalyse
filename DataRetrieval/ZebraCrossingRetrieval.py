@@ -1,3 +1,10 @@
+"""Retrieve crossing features rather than their geometry support nodes.
+
+An Overpass query for a zebra crossing way includes its member nodes.
+Retain only nodes or ways whose own tags establish a zebra crossing;
+otherwise a single marked way could create several false crossings.
+"""
+
 import requests
 import time
 from pathlib import Path
@@ -111,12 +118,20 @@ class ZebraCrossingRetrieval:
                 "crossing", "crossing:markings", "crossing_ref"
             )):
                 continue
+            # Markings or a legacy zebra reference do not establish an
+            # unsignalized crossing when a more specific tag disagrees.
+            if (tags.get("crossing") in {"no", "unmarked", "traffic_signals"}
+                    or tags.get("crossing:markings") in {"no", "none"}):
+                continue
 
             if el["type"] == "node":
                 geom = Point(el["lon"], el["lat"])
 
             elif el["type"] == "way":
-                coords = [nodes[nid] for nid in el.get("nodes", []) if nid in nodes]
+                missing = [nid for nid in el.get("nodes", []) if nid not in nodes]
+                if missing:
+                    raise ValueError(f"Incomplete geometry for OSM way {el['id']}: missing nodes {missing[:5]}")
+                coords = [nodes[nid] for nid in el.get("nodes", [])]
                 if len(coords) < 2:
                     continue
                 geom = LineString(coords)
@@ -138,4 +153,7 @@ class ZebraCrossingRetrieval:
             return gpd.GeoDataFrame(records, geometry="geometry", crs="EPSG:4326")
         else:
             print("No crossings identified")
-            return None
+            return gpd.GeoDataFrame(
+                columns=["osm_id", "element_type", "crossing", "highway", "name", "street", "geometry"],
+                geometry="geometry", crs="EPSG:4326",
+            )

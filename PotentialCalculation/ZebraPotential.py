@@ -1,8 +1,15 @@
-from typing import List
-from dataclasses import dataclass
+"""Find eligible faster roads near confirmed zebra crossings.
+
+A zebra marker beside a 50 km/h road can support a local proposal, while
+an unrelated distant crossing cannot. Measure in a metric CRS and retain
+each crossing-to-road pair for map display and source verification.
+"""
+
 import geopandas as gpd
 
+from PotentialCalculation.FacilityStreetRelevance import FacilityStreetRelevance
 from PotentialCalculation.PotentialCalculationResult import PotentialCalculationResult
+
 
 class ZebraPotential:
     @staticmethod
@@ -24,12 +31,7 @@ class ZebraPotential:
         if zebras_gdf is None or zebras_gdf.empty:
             return PotentialCalculationResult([], [])
 
-        # -----------------------------
-        # Tempo-50/60-Straßen filtern
-        # -----------------------------
-        tempo50_or_60 = streets_gdf[
-            streets_gdf["maxspeed_class"].isin({"50", "60"})
-        ].copy()
+        tempo50_or_60 = FacilityStreetRelevance.potential_streets(streets_gdf)
 
         if tempo50_or_60.empty:
             return PotentialCalculationResult([], [])

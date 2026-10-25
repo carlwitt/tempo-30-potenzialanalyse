@@ -1,32 +1,21 @@
+"""Find eligible Tempo-50/60 links between verifiable slow-road anchors.
+
+A gap way can connect two existing Tempo-30 roads through several short
+OSM ways, as at way 1414867517. Trace those intermediate ways and record
+both reached anchors. If one end instead needs a separate facility or
+crossing measure, record that prerequisite as a conditional gap.
+"""
+
 import math
+from itertools import product
+
 import geopandas as gpd
-from shapely.geometry import Point
 import pandas as pd
-from pyproj import Transformer
+from shapely.geometry import Point
 from tqdm import tqdm
 
+from DataRetrieval.RoadClassification import RoadClassification
 from PotentialCalculation.PotentialCalculationResult import PotentialCalculationResult
-
-# create once (cheap but still better than recreating every call)
-_TRANSFORMER_3857_TO_4326 = Transformer.from_crs(
-    "EPSG:3857",
-    "EPSG:4326",
-    always_xy=True,
-)
-
-def point_to_lonlat(pt):
-    lon, lat = _TRANSFORMER_3857_TO_4326.transform(pt.x, pt.y)
-    return lon, lat
-
-
-DEBUG_STREET = "landwehrstraße"  # lowercase, None = off
-DEBUG_ON = False
-
-def dbg(seg, msg):
-    #pass
-    if DEBUG_ON and str(seg.get("name", "")).lower() == DEBUG_STREET:
-        print(msg)
-
 
 class Tempo50GapPotential:
 
@@ -94,49 +83,6 @@ class Tempo50GapPotential:
         diff = min(diff, 360 - diff)
         return min(diff, abs(diff - 180))
 
-    # -----------------------------------------------------
-    # Fall 1:
-    # Enden grenzen ausschließlich an Tempo 30
-    # -----------------------------------------------------
-    @staticmethod
-    def check_if_segment_ends_only_touch_tempo_30(seg, gdf: gpd.GeoDataFrame) -> bool:
-        for pt in (seg.start_pt, seg.end_pt):
-            touching = gdf[
-                (gdf.geometry.touches(pt)) &
-                (gdf.index != seg.name)
-            ]
-
-            if touching.empty:
-                return False
-
-            if not touching["maxspeed_class"].isin({"30", "30_Zone"}).all():
-                return False
-
-        return True
-
-    # -----------------------------------------------------
-    # Fall 2:
-    # In beide Richtungen weiterfahren → Tempo 30
-    # -----------------------------------------------------
-    @staticmethod
-    def check_if_straight_line_direction_for_both_ends_has_tempo_30(
-        seg,
-        gdf,
-        max_total_length: float = 500,
-        min_total_length: float = 30,
-        potential_types_by_street: dict[int, set[str]] | None = None,
-    ) -> bool:
-        """Return whether both ends reach current or prospective Tempo 30.
-
-        Dependency groups are returned separately so a prospective anchor is
-        never mistaken for an already implemented speed restriction.
-        """
-
-        found, _ = Tempo50GapPotential.evaluate_gap(
-            seg, gdf, max_total_length, min_total_length, potential_types_by_street
-        )
-        return found
-
     @staticmethod
     def evaluate_gap(
         seg,
@@ -158,48 +104,81 @@ class Tempo50GapPotential:
         min_total_length: float = 30,
         potential_types_by_street: dict[int, set[str]] | None = None,
     ) -> tuple[bool, list[list[tuple[str, int]]], float | None]:
+        found, groups, length, _, _ = Tempo50GapPotential._evaluate_gap_with_anchors(
+            seg, gdf, max_total_length, min_total_length, potential_types_by_street,
+        )
+        return found, groups, length
+
+    @staticmethod
+    def _evaluate_gap_with_anchors(
+        seg,
+        gdf,
+        max_total_length: float = 500,
+        min_total_length: float = 30,
+        potential_types_by_street: dict[int, set[str]] | None = None,
+    ) -> tuple[bool, list[list[tuple[str, int]]], float | None, list[int], list[int]]:
         potential_types_by_street = potential_types_by_street or {}
 
-        base_angles = {
-            "Standard": seg.angle_start,
-            "Reverse": seg.angle_end,
-        }
-
-        base_points = {
-            "Standard": seg.start_pt,
-            "Reverse": seg.end_pt,
-        }
-
-        lengths = {}
-        required_groups = []
-
-        for dir in ["Standard", "Reverse"]:
-            used_point = base_points[dir]
-            base_angle = base_angles[dir]
+        ends = []
+        for used_point, base_angle in (
+            (seg.start_pt, seg.angle_start),
+            (seg.end_pt, seg.angle_end),
+        ):
 
             if Tempo50GapPotential.all_directions_tempo30(seg, used_point, gdf):
-                lengths[dir] = 0.0
+                touching = gdf[(gdf.geometry.touches(used_point)) & (gdf.index != seg.name)]
+                ends.append([(0.0, [], sorted(int(value) for value in touching.osm_id), [])])
                 continue
 
-            ok, length, options = Tempo50GapPotential.follow_straight_chain(
+            ok, length, options, anchor_ids, corridor_ids = Tempo50GapPotential.follow_straight_chain(
                 seg, used_point, base_angle, gdf,
                 potential_types_by_street=potential_types_by_street,
             )
             if not ok:
-                return False, [], None
+                return False, [], None, [], []
 
-            lengths[dir] = length
+            alternatives = [(length, options, anchor_ids, corridor_ids)]
             if options:
-                required_groups.append(options)
+                # A prospective anchor can hide an existing T30 farther along
+                # the same road. Keep that alternative to avoid rejecting a
+                # valid one-future-end gap, or downgrading a direct gap.
+                existing, existing_length, _, existing_anchor_ids, existing_corridor_ids = Tempo50GapPotential.follow_straight_chain(
+                    seg, used_point, base_angle, gdf,
+                )
+                if existing:
+                    alternatives.append((existing_length, [], existing_anchor_ids, existing_corridor_ids))
+            ends.append(alternatives)
 
-        total_corridor_length = lengths["Standard"] + lengths["Reverse"] + seg.length_m
-        dbg(seg, f'{seg.osm_id} std length: {lengths["Standard"]}, reverse {lengths["Reverse"]}, seg {seg.length_m}')
-        
-        if min_total_length <= total_corridor_length <= max_total_length:
-            return True, required_groups, total_corridor_length
-        return False, required_groups, None
+        candidates = []
+        for first, second in product(*ends):
+            required_groups = [options for _, options, _, _ in (first, second) if options]
+            # Exactly one end may still need a separate measure; two future
+            # anchors do not constitute a conditional gap.
+            if len(required_groups) > 1:
+                continue
+            total = first[0] + second[0] + seg.length_m
+            if min_total_length <= total <= max_total_length:
+                existing_anchor_ids = sorted({
+                    anchor_id for _, _, anchor_ids, _ in (first, second) for anchor_id in anchor_ids
+                })
+                if not required_groups and len(existing_anchor_ids) < 2:
+                    # One mapped street touching both ends does not provide
+                    # two independently verifiable Tempo-30 connections.
+                    continue
+                corridor_ids = sorted({
+                    street_id for _, _, _, path in (first, second) for street_id in path
+                })
+                candidates.append((required_groups, total, existing_anchor_ids, corridor_ids))
+        if not candidates:
+            return False, [], None, [], []
+        # Existing T30 at both ends takes precedence over a shorter future link.
+        groups, total, existing_anchor_ids, corridor_ids = min(
+            candidates, key=lambda item: (len(item[0]), item[1])
+        )
+        return True, groups, total, existing_anchor_ids, corridor_ids
        
     
+    @staticmethod
     def all_directions_tempo30(seg, point, gdf):
         """
         If every connected segment at this point is Tempo-30, return True.
@@ -209,9 +188,10 @@ class Tempo50GapPotential:
             return False
         
     
-        return (touching["maxspeed_class"].isin({"30", "30_Zone"}) | (touching["conditional_speed"] == "30")).all()
+        return touching["maxspeed_class"].map(RoadClassification.is_covered_speed).all()
 
 
+    @staticmethod
     def follow_straight_chain(
         start_seg, start_point, start_angle, gdf, max_depth=10, angle_tol=30,
         potential_types_by_street: dict[int, set[str]] | None = None,
@@ -222,15 +202,12 @@ class Tempo50GapPotential:
         current_angle = start_angle
 
         visited = {start_seg.osm_id}
-        depth = 0
-        total_length = 0.0  # ⬅️ NUR fremde Segmente
-        dbg(start_seg,f"\n🔎Start to follow segment {current_seg.osm_id} ({current_seg.name})")
-
+        total_length = 0.0  # Excludes the starting segment.
+        corridor_ids = []
         gdf_spatial_index = gdf.sindex
-        while depth < max_depth:
-            depth += 1
+        for _ in range(max_depth):
 
-            # Performance increase through filtering via spacial index
+            # Query only streets at the current endpoint.
             possible = list(gdf_spatial_index.intersection(current_point.bounds))
             candidates = gdf.iloc[possible]
 
@@ -240,12 +217,9 @@ class Tempo50GapPotential:
             ]
 
             if candidates.empty:
-                dbg(start_seg, "❌ No candidates")
-                return False, total_length, []
+                return False, total_length, [], [], []
 
-            best_cand = None
-            best_diff = 999
-
+            continuations = []
             for _, cand in candidates.iterrows():
                 if cand.start_pt.equals(current_point):
                     cand_angle = cand.angle_start
@@ -255,45 +229,39 @@ class Tempo50GapPotential:
                     continue
 
                 diff = Tempo50GapPotential.axis_angle_diff(current_angle, cand_angle)
-                if diff < best_diff:
-                    best_diff = diff
-                    best_cand = cand
+                if diff > angle_tol or cand.osm_id in visited:
+                    continue
+                current_name = current_seg["name"]
+                same_name = (pd.notna(current_name) and pd.notna(cand["name"])
+                             and current_name == cand["name"])
+                continuations.append((not same_name, diff, int(cand.osm_id), cand))
 
-            if best_cand is None:
-                dbg(start_seg, "❌ No candidate passed endpoint + angle checks")
-                return False, total_length, []
+            if not continuations:
+                return False, total_length, [], [], []
+            _, _, _, best_cand = min(continuations, key=lambda item: item[:3])
 
-            dbg(start_seg,
-                f"✅ Best candidate: osm_id={best_cand.osm_id}, "
-                f"name={best_cand.name}, "
-                f"angle_diff={best_diff:.1f}°, "
-                f"class={best_cand.maxspeed_class}"
-            )
-
-            if best_cand.osm_id in visited:
-                dbg(start_seg, "⛔ Rejected: loop detected")
-                return False, total_length, []
-
-            if best_diff > angle_tol:
-                dbg(start_seg, "⛔ Rejected: angle to steep")
-                return False, total_length, []
-
-            # ➜ Erfolg: Tempo 30 erreicht
-            if best_cand.maxspeed_class in {"30", "30_Zone"} or best_cand.conditional_speed == "30":
-                dbg(start_seg, "✅ Accepted: Found end candidate")
-                return True, total_length, []
+            # A permanent low-speed road closes this end of the gap.
+            if RoadClassification.is_covered_speed(best_cand.maxspeed_class):
+                return True, total_length, [], [int(best_cand.osm_id)], corridor_ids
 
             # A tagged facility/crossing potential would become the second
             # Tempo-30 anchor only after that separate measure is realized.
             potential_types = (potential_types_by_street or {}).get(best_cand.osm_id, set())
             if potential_types:
                 options = [(kind, best_cand.osm_id) for kind in sorted(potential_types)]
-                return True, total_length, options
+                return True, total_length, options, [], corridor_ids
+
+            # A corridor is part of the proposed change. Its current speed
+            # must be known and continuously eligible; an untagged or already
+            # conditionally slow way cannot silently bridge two anchors.
+            if (best_cand.maxspeed_class not in {"50", "60"}
+                    or best_cand.conditional_speed == "30"):
+                return False, total_length, [], [], []
 
             visited.add(best_cand.osm_id)
+            corridor_ids.append(int(best_cand.osm_id))
             total_length += best_cand.length_m
 
-            # weiterlaufen
             if best_cand.start_pt.equals(current_point):
                 current_point = best_cand.end_pt
                 current_angle = best_cand.angle_end
@@ -303,8 +271,7 @@ class Tempo50GapPotential:
 
             current_seg = best_cand
 
-        dbg(start_seg,"⛔ Rejected: Reeched end of search")
-        return False, total_length, []
+        return False, total_length, [], [], []
 
 
     # -----------------------------------------------------
@@ -334,32 +301,35 @@ class Tempo50GapPotential:
 
         result = []
         conditional_dependencies = {}
+        conditional_existing_anchors = {}
+        gap_corridor_ways = {}
         direct_lengths = {}
+        direct_existing_anchors = {}
 
         for _, seg in tqdm(classified_permanent_tempo50_or_60.iterrows(),
                         total=len(classified_permanent_tempo50_or_60),
                         desc="Checking segments"):
             
-            found, required_groups, corridor_length = Tempo50GapPotential._evaluate_gap_with_length(
+            found, required_groups, corridor_length, existing_anchor_ids, corridor_ids = Tempo50GapPotential._evaluate_gap_with_anchors(
                 seg, gdf, potential_types_by_street=potential_types_by_street
             )
-            # A future anchor can be reached before a valid existing one, or
-            # make the provisional corridor shorter than the 30 m minimum.
-            # In either case the existing, direct connection takes priority.
-            if required_groups:
-                direct, _, direct_length = Tempo50GapPotential._evaluate_gap_with_length(seg, gdf)
-                if direct:
-                    found, required_groups, corridor_length = True, [], direct_length
             if found:
-                dbg(seg, "Found landwehrst. segment with potential!")
                 result.append(seg.osm_id)
+                gap_corridor_ways[seg.osm_id] = corridor_ids
                 if required_groups:
                     conditional_dependencies[seg.osm_id] = required_groups
+                    if not existing_anchor_ids:
+                        raise ValueError(f"Conditional gap {seg.osm_id} has no existing Tempo 30 anchor")
+                    conditional_existing_anchors[seg.osm_id] = existing_anchor_ids
                 elif corridor_length is not None:
                     direct_lengths[seg.osm_id] = round(corridor_length, 1)
+                    direct_existing_anchors[seg.osm_id] = existing_anchor_ids
 
         return PotentialCalculationResult(
             street_ids=result,
             conditional_gap_dependencies=conditional_dependencies,
+            conditional_gap_existing_anchors=conditional_existing_anchors,
+            gap_corridor_ways=gap_corridor_ways,
             direct_gap_lengths_m=direct_lengths,
+            direct_gap_existing_anchors=direct_existing_anchors,
         )

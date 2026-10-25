@@ -1,3 +1,11 @@
+"""Retrieve OSM facilities without treating query support nodes as places.
+
+An Overpass way query also returns nodes used only to draw its geometry.
+Build the facility from those nodes, then keep only objects matching the
+requested tags (for example ``amenity=kindergarten``). This avoids
+counting a school's outline nodes as additional schools.
+"""
+
 import re
 import requests
 import time
@@ -6,14 +14,13 @@ import geopandas as gpd
 from typing import Tuple, Optional, List, Dict
 
 from shapely.geometry import Point, LineString, Polygon
+from shapely.ops import polygonize, unary_union
 
 from DataRetrieval.OSMDataCache import OSMDataCache
 
 
 class BuildingRetrieval:
-    """
-    Retrieve tagged OSM facilities and their geometry via Overpass.
-    """
+    """Fetch tagged OSM nodes and ways, using support nodes only for geometry."""
 
     OVERPASS_URL = "https://overpass-api.de/api/interpreter"
 
@@ -123,6 +130,33 @@ class BuildingRetrieval:
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
+    @staticmethod
+    def _relation_geometry(relation, ways, nodes):
+        if relation.get("tags", {}).get("type") != "multipolygon":
+            return None, []
+        outlines = {"outer": [], "inner": []}
+        member_nodes = []
+        for member in relation.get("members", []):
+            if member.get("type") != "way" or member.get("role") not in outlines:
+                continue
+            way = ways.get(member["ref"])
+            if way is None or any(node_id not in nodes for node_id in way["nodes"]):
+                raise ValueError(f"Incomplete geometry for OSM relation {relation['id']}")
+            member_nodes.extend(way["nodes"])
+            outlines[member["role"]].append(LineString([nodes[node_id] for node_id in way["nodes"]]))
+        if not outlines["outer"]:
+            raise ValueError(f"OSM relation {relation['id']} has no outer ways")
+        outer = list(polygonize(unary_union(outlines["outer"])))
+        inner = list(polygonize(unary_union(outlines["inner"]))) if outlines["inner"] else []
+        if not outer:
+            raise ValueError(f"Cannot polygonize OSM relation {relation['id']}")
+        geometry = unary_union(outer)
+        if inner:
+            geometry = geometry.difference(unary_union(inner))
+        if geometry.is_empty or not geometry.is_valid or geometry.geom_type not in {"Polygon", "MultiPolygon"}:
+            raise ValueError(f"Invalid geometry for OSM relation {relation['id']}")
+        return geometry, list(dict.fromkeys(member_nodes))
+
     def fetch(self, bbox) -> Optional[gpd.GeoDataFrame]:
         data = self._fetch_raw_cached(bbox)
 
@@ -131,6 +165,7 @@ class BuildingRetrieval:
             for el in data["elements"]
             if el["type"] == "node"
         }
+        ways = {el["id"]: el for el in data["elements"] if el["type"] == "way"}
 
         records = []
 
@@ -152,7 +187,10 @@ class BuildingRetrieval:
                 geom = Point(el["lon"], el["lat"])
 
             elif el["type"] == "way":
-                coords = [nodes[n] for n in el.get("nodes", []) if n in nodes]
+                missing = [node_id for node_id in el.get("nodes", []) if node_id not in nodes]
+                if missing:
+                    raise ValueError(f"Incomplete geometry for OSM way {el['id']}: missing nodes {missing[:5]}")
+                coords = [nodes[node_id] for node_id in el.get("nodes", [])]
 
                 if len(coords) < 2:
                     continue
@@ -162,20 +200,31 @@ class BuildingRetrieval:
                 else:
                     geom = LineString(coords)
 
+            elif el["type"] == "relation":
+                geom, relation_node_ids = self._relation_geometry(el, ways, nodes)
+                if geom is None:
+                    continue
+
             else:
                 continue
 
             # ---------------- Name filter ----------------
             name = tags.get("name")
             if self.name_filter_regex:
-                if name is None or not self.name_filter_regex.search(name):
+                target_groups = {
+                    group.strip().casefold()
+                    for group in re.split(r"[;,]", tags.get("social_facility:for", ""))
+                }
+                if "disabled" not in target_groups and (
+                    name is None or not self.name_filter_regex.search(name)
+                ):
                     continue
 
             # ---------------- Record ----------------
             record = {
                 "osm_id": el["id"],
                 "element_type": el["type"],
-                "osm_node_ids": el.get("nodes", []),
+                "osm_node_ids": relation_node_ids if el["type"] == "relation" else el.get("nodes", []),
                 "osm_url": f"https://www.openstreetmap.org/{el['type']}/{el['id']}",
                 "name": name,
                 "official_name": tags.get("official_name"),
@@ -195,8 +244,12 @@ class BuildingRetrieval:
 
             records.append(record)
 
+        columns = [
+            "osm_id", "element_type", "osm_node_ids", "osm_url", "name",
+            "official_name", "alt_name", "short_name", "amenity", "healthcare",
+            "social_facility", "social_facility_for", "street", "housenumber",
+            "website", "operator", "geometry",
+        ]
         if not records:
             print("No results found.")
-            return None
-
-        return gpd.GeoDataFrame(records, geometry="geometry", crs="EPSG:4326")
+        return gpd.GeoDataFrame(records, columns=columns, geometry="geometry", crs="EPSG:4326")

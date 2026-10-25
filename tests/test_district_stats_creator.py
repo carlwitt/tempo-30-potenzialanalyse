@@ -117,9 +117,10 @@ class DistrictStatsCreatorTests(unittest.TestCase):
             {"display_role": [], "potential_candidate": []}, geometry=[], crs="EPSG:4326",
         )
         disability = gpd.GeoDataFrame(
-            {"facility_status": ["confirmed_disabled", "target_group_unknown"],
-             "potential_candidate": [True, False]},
-            geometry=[Point(0.2, 0.2), Point(0.4, 0.4)], crs="EPSG:4326",
+            {"facility_status": ["confirmed_disabled", "target_group_unknown",
+                                 "different_target_group"],
+             "potential_candidate": [True, False, True]},
+            geometry=[Point(0.2, 0.2), Point(0.4, 0.4), Point(0.6, 0.6)], crs="EPSG:4326",
         )
         result = DistrictStatsCreator.create(
             districts, crossings, {"disability_facilities": disability}

@@ -1,3 +1,8 @@
+"""One long OSM road can pass several facilities. Check local clipping, exact
+source-road pairs and fragment filtering so each popup shows only its
+supported street pieces.
+"""
+
 import unittest
 
 import geopandas as gpd
@@ -16,6 +21,7 @@ class FacilityStreetSegmentsTests(unittest.TestCase):
         streets = gpd.GeoDataFrame(
             {"osm_id": [10, 20, 30, 40],
              "highway": ["residential", "residential", "residential", "service"],
+             "service": [None, None, None, "driveway"],
              "maxspeed_class": ["50", "60", "50", "50"],
              "conditional_speed": [None, None, "30", None]},
             geometry=[LineString([(0, 0), (20, 0)]),
@@ -30,6 +36,23 @@ class FacilityStreetSegmentsTests(unittest.TestCase):
         )
 
         self.assertEqual(set(result.source_street_pairs), {(1, 10), (2, 20)})
+
+    def test_motorway_near_facility_is_not_a_candidate(self):
+        facilities = gpd.GeoDataFrame(
+            {"osm_id": [1, 2]}, geometry=[Point(5, 0), Point(105, 0)], crs="EPSG:25832",
+        )
+        streets = gpd.GeoDataFrame(
+            {"osm_id": [10, 20], "highway": ["motorway_link", "residential"],
+             "maxspeed_class": ["60", "50"], "conditional_speed": [None, None]},
+            geometry=[LineString([(0, 0), (10, 0)]),
+                      LineString([(100, 0), (110, 0)])], crs="EPSG:25832",
+        )
+
+        result = ProximityPotential.find_tempo50_segments_near_features(
+            streets, facilities, metric_crs="EPSG:25832",
+        )
+
+        self.assertEqual(result.source_street_pairs, [(2, 20)])
 
     def test_creates_lines_and_annotates_both_popups(self):
         facilities = gpd.GeoDataFrame(
@@ -72,6 +95,30 @@ class FacilityStreetSegmentsTests(unittest.TestCase):
 
         self.assertTrue(lines.empty)
         self.assertEqual(lines.crs, streets.crs)
+
+    def test_split_way_popup_only_names_local_facility(self):
+        streets = gpd.GeoDataFrame(
+            {"osm_id": [10, 10], "name": ["Lange Straße"] * 2,
+             "maxspeed_class": ["50"] * 2},
+            geometry=[LineString([(0, 0), (100, 0)]),
+                      LineString([(900, 0), (1000, 0)])], crs="EPSG:25832",
+        )
+        segments = gpd.GeoDataFrame(
+            {"street_osm_id": [10, 10], "facility_layer": ["educational_buildings"] * 2,
+             "facility_id": [1, 2], "facility_name": ["Schule West", "Schule Ost"],
+             "facility_osm_url": ["https://www.openstreetmap.org/node/1",
+                                  "https://www.openstreetmap.org/node/2"],
+             "distance_m": [5.0, 5.0]},
+            geometry=[LineString([(30, 0), (70, 0)]),
+                      LineString([(930, 0), (970, 0)])], crs="EPSG:25832",
+        )
+
+        result = FacilityStreetSegments.annotate_potential_streets(streets, segments)
+
+        self.assertIn("Schule West", result.description.iloc[0])
+        self.assertNotIn("Schule Ost", result.description.iloc[0])
+        self.assertIn("Schule Ost", result.description.iloc[1])
+        self.assertNotIn("Schule West", result.description.iloc[1])
 
     def test_long_osm_way_is_clipped_to_facility_vicinity(self):
         facilities = gpd.GeoDataFrame(

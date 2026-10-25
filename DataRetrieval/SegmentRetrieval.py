@@ -1,8 +1,17 @@
+"""Retrieve OSM road ways and classify their usable speed evidence.
+
+A residential way with no ``maxspeed`` tag is not confirmed Tempo 50;
+one with a conditional Tempo-30 rule is not an open candidate either.
+Keep the original tags and parsed conditions when building street
+segments so gap and facility analyses share the same road facts.
+"""
+
 import requests
 from typing import Tuple
 import geopandas as gpd
 from shapely.geometry import LineString
 import time
+import re
 
 from pathlib import Path
 
@@ -10,6 +19,7 @@ from dataclasses import dataclass
 from typing import List, Optional
 
 from DataRetrieval.OSMDataCache import OSMDataCache
+from DataRetrieval.RoadClassification import RoadClassification
 
 class SegmentRetrieval:
     OVERPASS_URL = "https://overpass-api.de/api/interpreter"
@@ -111,20 +121,17 @@ class SegmentRetrieval:
                 continue
 
             tags = el.get("tags", {})
-            highway = tags.get("highway")
-
-            # Nur relevante Straßen
-            if highway in {"footway", "cycleway", "path", "steps"}:
+            if not RoadClassification.allows_public_motorcar(tags):
                 continue
 
-            coords = [
-                nodes[nid] for nid in el["nodes"]
-                if nid in nodes
-            ]
+            missing = [nid for nid in el["nodes"] if nid not in nodes]
+            if missing:
+                raise ValueError(f"Incomplete geometry for OSM way {el['id']}: missing nodes {missing[:5]}")
+            coords = [nodes[nid] for nid in el["nodes"]]
             if len(coords) < 2:
                 continue
             
-            new_entry = create_gdf_entry(el, highway, coords, tags)
+            new_entry = create_gdf_entry(el, tags["highway"], coords, tags)
            
             records.append(new_entry)
 
@@ -135,46 +142,43 @@ class SegmentRetrieval:
 
 
 def create_gdf_entry(el, highway, coords, tags):
-    # -----------------------------
-    # Maxspeed-Klassifikation
-    # -----------------------------
     maxspeed = tags.get("maxspeed")
     zone_maxspeed = tags.get("zone:maxspeed")
-
-    if maxspeed == "10":
-        maxspeed_class = "10"
-    elif maxspeed == "20":
-        maxspeed_class = "20"
-    elif maxspeed == "30":
-        maxspeed_class = "30"
-    elif zone_maxspeed == "30":
-        maxspeed_class = "30_Zone"
-    elif maxspeed == "50":
-        maxspeed_class = "50"
-    elif maxspeed == "60":
-        maxspeed_class = "60"
-    else:
-        # implizit innerorts
-        maxspeed_class = "Keine Daten"
 
     max_speed_conditional_str = tags.get("maxspeed:conditional")
     try:
         conditional_speed = parse_conditional_speed(max_speed_conditional_str)
-    except:
+    except (AttributeError, TypeError, ValueError):
         conditional_speed = None
     
     new_entry = {
         "osm_id": el["id"],
         "name": tags.get("name"),
         "highway": highway,
+        "service": tags.get("service"),
+        "access": tags.get("access"),
+        "vehicle": tags.get("vehicle"),
+        "motor_vehicle": tags.get("motor_vehicle"),
+        "motorcar": tags.get("motorcar"),
+        "bicycle_road": tags.get("bicycle_road"),
+        "living_street": tags.get("living_street"),
+        "public_motorcar": True,
         "maxspeed_tag": maxspeed,
+        "maxspeed_conditional_tag": max_speed_conditional_str,
         "zone_maxspeed_tag": zone_maxspeed,
-        "maxspeed_class": maxspeed_class,
+        "maxspeed_type_tag": tags.get("maxspeed:type"),
+        "source_maxspeed_tag": tags.get("source:maxspeed"),
+        "maxspeed_class": RoadClassification.classify_speed(tags),
         "geometry": LineString(coords)
     }
 
     if(conditional_speed is None):
-        new_entry["conditional_speed"] = None
+        # The detail parser does not cover every valid OSM condition (such as
+        # two time ranges or multiple rules). Still recognise a 30 km/h rule
+        # so it cannot become an unsupported open facility/gap potential.
+        new_entry["conditional_speed"] = (
+            "30" if has_conditional_tempo_30(max_speed_conditional_str) else None
+        )
         new_entry["cond_speed_days"] = None
         new_entry["cond_speed_starttime"] = None
         new_entry["cond_speed_endtime"] = None
@@ -187,6 +191,10 @@ def create_gdf_entry(el, highway, coords, tags):
         new_entry["cond_speed_special"] = str.join(",", conditional_speed.special)
 
     return new_entry
+
+
+def has_conditional_tempo_30(raw: str | None) -> bool:
+    return isinstance(raw, str) and bool(re.search(r"(?:^|;)\s*30\s*@", raw))
 
 
 
