@@ -28,7 +28,8 @@ jobs:
             --public-road-candidates --validate-osm-sources --broaden-facilities \
             --near-road-facilities --confirmed-disability-only --strict-gap-evidence \
             --clip-long-potentials --filter-short-potentials \
-            --simplify-crossings --compact-playgrounds
+            --simplify-crossings --compact-playgrounds \
+            --additional-features --prefer-main-entrances
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4

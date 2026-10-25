@@ -70,6 +70,15 @@ class FacilityPopupCreator:
             candidate_value = facility.get("potential_candidate")
             candidate = pd.notna(candidate_value) and bool(candidate_value)
             if candidate:
+                entrance_ids = facility.get("main_entrance_osm_ids")
+                if isinstance(entrance_ids, list) and entrance_ids:
+                    links = [
+                        f"[[https://www.openstreetmap.org/node/{node_id}|OSM-Eingang {node_id}]]"
+                        for node_id in dict.fromkeys(entrance_ids)
+                    ]
+                    reference = FacilityPopupCreator._text(facility.get("imagery_reference"))
+                    parts.append("Haupteingang prüfen: " + ", ".join(links)
+                                 + (f" ({reference})" if reference else ""))
                 details = []
                 reason = FacilityPopupCreator._text(facility.get("potential_reason"))
                 if reason:
@@ -84,6 +93,7 @@ class FacilityPopupCreator:
                         lines.append(
                             f"[[{road['street_osm_url']}|{road['street_name']}]] — "
                             f"aktuell {road['current_speed_kmh']} km/h; Abstand {road['distance_m']:.1f} m"
+                            + (" zum OSM-Haupteingang" if road.get("distance_reference") == "OSM-Haupteingang" else "")
                         )
                     parts.append("\n".join(lines))
 

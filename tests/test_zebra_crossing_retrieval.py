@@ -27,6 +27,10 @@ class ZebraCrossingRetrievalTests(unittest.TestCase):
         self.assertEqual(result.osm_id.tolist(), [3, 4])
         self.assertEqual(result.element_type.tolist(), ["way", "node"])
         self.assertEqual(len(result.geometry.iloc[0].coords), 2)
+        legacy = retrieval.fetch_zebra_crossings(
+            (52.0, 13.0, 52.1, 13.1), validate_osm_sources=False,
+        )
+        self.assertEqual(legacy.osm_id.tolist(), [1, 2, 3, 4])
 
     def test_explicit_unmarked_or_no_markings_override_zebra_reference(self):
         elements = [

@@ -24,8 +24,9 @@ jobs:
 
       - name: Run main.py
         run: |
-          # Keep the published Munich potential rules until each change is reviewed.
-          python main.py
+          # No flags: retain current main's calculation rules.
+          # Opt into reviewed changes here, using the flags listed by --help.
+          python main.py München
 
       - name: Check existing Munich GeoJSON contract
         run: python DataOutput/verify_munich_export.py

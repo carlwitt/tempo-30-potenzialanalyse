@@ -29,6 +29,10 @@ class BuildingRetrievalTests(unittest.TestCase):
             "https://www.openstreetmap.org/node/4",
             "https://www.openstreetmap.org/way/5",
         ])
+        retrieval.validate_osm_sources = False
+        retrieval.broaden_facilities = False
+        legacy = retrieval.fetch((52.0, 13.0, 52.1, 13.1))
+        self.assertEqual(legacy.osm_id.tolist(), [1, 2, 3, 4, 5])
 
     def test_preserves_osm_names_and_website(self):
         retrieval = BuildingRetrieval("hospitals", {"amenity": ["hospital"]})
@@ -59,6 +63,22 @@ class BuildingRetrievalTests(unittest.TestCase):
         result = retrieval.fetch((52.0, 13.0, 52.1, 13.1))
 
         self.assertEqual(result.osm_id.tolist(), [43])
+
+    def test_legacy_website_field_is_preserved_until_broadening_is_enabled(self):
+        elements = [{
+            "type": "node", "id": 42, "lon": 13.0, "lat": 52.0,
+            "tags": {"amenity": "hospital", "website": "https://new.example.org",
+                     "contact:website": "https://legacy.example.org"},
+        }]
+        for broaden, expected in (
+            (False, "https://legacy.example.org"), (True, "https://new.example.org"),
+        ):
+            with self.subTest(broaden=broaden):
+                retrieval = BuildingRetrieval(
+                    "hospitals", {"amenity": ["hospital"]}, broaden_facilities=broaden,
+                )
+                retrieval._fetch_raw_cached = lambda bbox: {"elements": elements}
+                self.assertEqual(retrieval.fetch("München").website.tolist(), [expected])
 
     def test_healthcare_hospital_works_without_amenity_or_name_keyword(self):
         retrieval = BuildingRetrieval(
@@ -145,6 +165,22 @@ class BuildingRetrievalTests(unittest.TestCase):
         self.assertTrue(result.empty)
         self.assertEqual(result.crs.to_string(), "EPSG:4326")
         self.assertTrue({"osm_id", "amenity", "name", "geometry"}.issubset(result.columns))
+
+    def test_source_validation_does_not_broaden_the_legacy_name_filter(self):
+        elements = [{"type": "node", "id": 31, "lon": 13.0, "lat": 52.0,
+                     "tags": {"amenity": "social_facility", "name": "Haus Zoar",
+                              "social_facility:for": "disabled"}}]
+        for validate in (False, True):
+            for broaden in (False, True):
+                with self.subTest(validate=validate, broaden=broaden):
+                    retrieval = BuildingRetrieval(
+                        "disability_facilities", {"amenity": ["social_facility"]},
+                        name_filter_regex="behindert", validate_osm_sources=validate,
+                        broaden_facilities=broaden,
+                    )
+                    retrieval._fetch_raw_cached = lambda bbox: {"elements": elements}
+                    self.assertEqual(retrieval.fetch("München").osm_id.tolist(),
+                                     [31] if broaden else [])
 
     def test_missing_way_node_cannot_create_shortcut_facility(self):
         retrieval = BuildingRetrieval("playgrounds", {"leisure": ["playground"]})

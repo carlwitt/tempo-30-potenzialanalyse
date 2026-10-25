@@ -45,6 +45,32 @@ class ConditionalGapTests(unittest.TestCase):
         self.assertEqual(result.direct_gap_lengths_m[20], 100.0)
         self.assertEqual(result.direct_gap_existing_anchors[20], [10, 30])
 
+    def test_legacy_profile_accepts_conditional_anchor_but_strict_profile_does_not(self):
+        streets = self._streets(["30", "50", "50"])
+        streets.loc[2, "conditional_speed"] = "30"
+
+        legacy = Tempo50GapPotential.find_all_tempo_50_gaps(streets, strict_gap_evidence=False)
+        strict = Tempo50GapPotential.find_all_tempo_50_gaps(streets, strict_gap_evidence=True)
+
+        self.assertEqual(legacy.street_ids, [20])
+        self.assertEqual(strict.street_ids, [])
+
+    def test_future_anchors_are_only_used_in_the_strict_profile(self):
+        streets = self._streets(["30", "50", "50"])
+        potentials = {"playgrounds": PotentialCalculationResult([30], [1], [(1, 30)])}
+
+        legacy = Tempo50GapPotential.find_all_tempo_50_gaps(
+            streets, potentials, strict_gap_evidence=False,
+        )
+        strict = Tempo50GapPotential.find_all_tempo_50_gaps(
+            streets, potentials, strict_gap_evidence=True,
+        )
+
+        self.assertEqual(legacy.street_ids, [])
+        self.assertIsNone(legacy.conditional_gap_dependencies)
+        self.assertIn(20, strict.street_ids)
+        self.assertEqual(strict.conditional_gap_dependencies[20], [[("playgrounds", 30)]])
+
     def test_living_street_and_zone_without_numeric_maxspeed_are_covered_anchors(self):
         streets = self._streets(["walk", "50", "30_Zone"])
 

@@ -9,8 +9,10 @@ the popup; the link then reflects the location being assessed.
 from datetime import date
 
 import geopandas as gpd
-from shapely.geometry import LineString, MultiLineString, MultiPolygon, Polygon
+from shapely.geometry import LineString, MultiLineString
 from shapely.strtree import STRtree
+
+from PotentialCalculation.EntranceEvidence import EntranceEvidence
 
 
 class StreetImageryLinkCreator:
@@ -38,6 +40,7 @@ class StreetImageryLinkCreator:
             result["mapillary_url"] = []
             if main_entrances is not None:
                 result["imagery_reference"] = []
+                result["main_entrance_osm_ids"] = []
             return result
 
         metric_crs = features.crs if features.crs.is_projected else features.estimate_utm_crs()
@@ -56,6 +59,7 @@ class StreetImageryLinkCreator:
             if main_entrances is not None:
                 note = "keine Tempo-50/60-Straße im Gebiet"
                 result["imagery_reference"] = [note] * len(result)
+                result["main_entrance_osm_ids"] = [[] for _ in range(len(result))]
                 descriptions = result["description"] if "description" in result else [None] * len(result)
                 result["description"] = [
                     "\n".join(part for part in (description, f"Bildstandort: {note}")
@@ -73,15 +77,12 @@ class StreetImageryLinkCreator:
 
         snapped_points = []
         references = []
+        entrance_ids_by_feature = []
         for _, feature in metric_features.iterrows():
-            node_ids = feature.get("osm_node_ids", [])
-            entrances = [entrance_by_id[node_id] for node_id in node_ids if node_id in entrance_by_id]
-            reference = "OSM-Haupteingang auf Objektgrenze"
-            if not entrances and use_area_entrances and metric_entrances is not None \
-                    and isinstance(feature.geometry, (Polygon, MultiPolygon)):
-                matches = metric_entrances.sindex.query(feature.geometry, predicate="intersects")
-                entrances = metric_entrances.geometry.iloc[matches].tolist()
-                reference = "OSM-Haupteingang im Areal; Zuordnung angenähert"
+            entrances, reference, entrance_ids = EntranceEvidence.points_for_feature(
+                feature, metric_entrances, entrance_by_id, use_area=use_area_entrances,
+            )
+            entrance_ids_by_feature.append(entrance_ids)
             if entrances:
                 location = min(
                     entrances,
@@ -129,4 +130,5 @@ class StreetImageryLinkCreator:
         result["mapillary_url"] = mapillary_urls
         if main_entrances is not None:
             result["imagery_reference"] = references
+            result["main_entrance_osm_ids"] = entrance_ids_by_feature
         return result

@@ -1,9 +1,11 @@
-"""Add official facility records without duplicating uncertain OSM matches.
+"""Apply configured area filters and add official facility records.
 
 An official Berlin Kita may already exist in OSM under a slightly different
 name. Match by strong address, name or containment evidence, preserve both
 source identities, and leave ambiguous matches unresolved. This supplies
 missing Kitas while preventing nearby but different places from merging.
+Boundary declarations constrain source assignment and the gap network
+without area-specific branches in the analysis entry point.
 """
 
 import json
@@ -16,6 +18,8 @@ import geopandas as gpd
 import pandas as pd
 
 from DataRetrieval.WFSRetrieval import WFSRetrieval
+from DataRetrieval.BerlinDistrictRetrieval import BerlinDistrictRetrieval
+from PotentialCalculation.AreaScope import AreaScope
 
 
 def facility_url(feature):
@@ -25,6 +29,33 @@ def facility_url(feature):
 
 class AdditionalFeatures:
     CONFIG = Path(__file__).resolve().parents[1] / "additional_features.json"
+
+    @staticmethod
+    def load_boundary(area, config_path=None):
+        config = json.loads(Path(config_path or AdditionalFeatures.CONFIG).read_text(encoding="utf-8"))
+        filters = [
+            entry for entry in config.get("filters", [])
+            if area.casefold() in {name.casefold() for name in entry["areas"]}
+        ]
+        if len(filters) > 1:
+            raise ValueError(f"Multiple boundary filters configured for {area}")
+        if not filters:
+            return None
+        boundary = filters[0]
+        if boundary["type"] != "osm_boundary":
+            raise ValueError(f"Unsupported additional feature filter: {boundary['type']}")
+        return BerlinDistrictRetrieval(
+            query=boundary["query"], id_tag=boundary["id_tag"],
+            cache_key=area.casefold(), cache_datatype=boundary["cache_datatype"],
+        ).fetch_districts()
+
+    @staticmethod
+    def filter_sources(features, boundary):
+        return AreaScope.filter_sources(features, boundary) if boundary is not None else features
+
+    @staticmethod
+    def filter_network(streets, boundary):
+        return AreaScope.filter_complete_network(streets, boundary) if boundary is not None else streets
 
     @staticmethod
     def _normalized(value):

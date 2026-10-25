@@ -1,4 +1,13 @@
 {
+  "filters": [
+    {
+      "areas": ["berlin"],
+      "type": "osm_boundary",
+      "query": "[out:json][timeout:180]; relation[\"boundary\"=\"administrative\"][\"admin_level\"=\"9\"][\"ref:DE-BE:BEZ\"]; out geom;",
+      "id_tag": "ref:DE-BE:BEZ",
+      "cache_datatype": "districts_v1"
+    }
+  ],
   "sources": [
     {
       "name": "berlin_kita",

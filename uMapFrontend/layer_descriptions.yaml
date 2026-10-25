@@ -1,3 +1,6 @@
+# Beschreibungen der Layer auf der uMap-Karte
+
+# Gruppe: Gründe für Tempo 30
 Tempo 30 Indikatoren: >-
   Lokale Gegebenheiten wie Schulen, Kitas, Zebrastreifen, etc. die ein Tempolimit nahelegen.
   Grundlage ist § 45 StVO, der eine Anordnung ohne Nachweis einer qualifizierten Gefahrenlage ermöglicht.
@@ -27,7 +30,9 @@ Schulen und Kitas: >-
 Senioren- und Pflegeeinrichtungen: >-
   Alten- und Pflegeheime zählen als sensible soziale Einrichtungen zum Schutz
   vulnerabler und mobilitätseingeschränkter Menschen.
-  
+
+
+
 Straßenabschnitte mit Tempo-30-Potenzial: >-
   Rot: Potenzial an Einrichtungen und Spielplätzen. Orange: Zebrastreifen-Potenzial.
   Violett: direkter Lückenschluss samt durchlaufenen Abschnitten; grün: bestehende Tempo-30-Anschlüsse.
@@ -45,7 +50,7 @@ Bereits abgedeckte Anschlussabschnitte: >-
   Bereits langsame Straßenfortsetzungen bis 500 m entlang der Straße;
   bedingtes Tempo 30 ist blau gestrichelt.
 
-accidents: >-
+Unfälle mit Personenschaden: >-
   Unfallatlas-Unfälle mit Personenschaden in {area_name} seit {accident_start_year}.
   Zeigt die aggregierte Unfalldichte wobei schwere Unfälle stärker gewichtet werden.
 

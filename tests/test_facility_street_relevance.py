@@ -72,6 +72,10 @@ class FacilityStreetRelevanceTests(unittest.TestCase):
         self.assertEqual(len(relevant), 1)
         potential = ProximityPotential.find_tempo50_segments_near_features(roads, relevant, 20)
         self.assertEqual(potential.source_street_pairs, [("official:kita:11171580", 151370242)])
+        legacy = ProximityPotential.find_tempo50_segments_near_features(
+            roads, relevant, 20, public_only=False, allow_addressed_offset=False,
+        )
+        self.assertEqual(legacy.street_ids, [])
         segments = FacilityStreetSegments.create(
             roads, {"educational_buildings": relevant}, {"educational_buildings": potential},
         )

@@ -140,6 +140,7 @@ class StreetImageryLinkCreatorTests(unittest.TestCase):
         entrance_view = gpd.GeoSeries([Point(15, 20)], crs="EPSG:3857").to_crs("EPSG:4326").iloc[0]
         self.assertIn(f"viewpoint={entrance_view.y:.7f}%2C{entrance_view.x:.7f}", result.description.iloc[0])
         self.assertEqual(result.imagery_reference.iloc[0], "OSM-Haupteingang auf Objektgrenze")
+        self.assertEqual(result.main_entrance_osm_ids.iloc[0], [1, 2])
         self.assertIn("kein OSM-Haupteingang", result.description.iloc[1])
         self.assertEqual(result.geometry.geom_type.tolist(), ["Polygon", "Polygon"])
 

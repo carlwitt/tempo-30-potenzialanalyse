@@ -247,7 +247,7 @@ def accident_layer(area_name, accident_start_year, accident_end_year):
             "fields": fields(("accident_id", "String"), ("UJAHR", "Number"),
                              ("UMONAT", "Number"), ("UKATEGORIE", "Number"),
                              ("heat_weight", "Number"), ("description", "Text")),
-            "description": LAYER_DESCRIPTIONS["accidents"].format(
+            "description": LAYER_DESCRIPTIONS["Unfälle mit Personenschaden"].format(
                 area_name=area_name, accident_start_year=accident_start_year,
             ),
         },

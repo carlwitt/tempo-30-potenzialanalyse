@@ -103,13 +103,13 @@ class BerlinUMapTests(unittest.TestCase):
             props = layer["properties"]
             if "description" not in props:
                 continue
-            key = "accidents" if props.get("type") == "Heat" else props["name"]
+            key = "Unfälle mit Personenschaden" if props.get("type") == "Heat" else props["name"]
             with self.subTest(layer=key):
                 text = descriptions[key]
                 self.assertIsInstance(text, str)
                 self.assertEqual(text, text.strip())
                 self.assertNotIn("\n", text)
-                if key == "accidents":
+                if key == "Unfälle mit Personenschaden":
                     text = text.format(area_name="Berlin", accident_start_year=2022)
                 self.assertEqual(text, props["description"])
             checked.add(key)

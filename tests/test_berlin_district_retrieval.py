@@ -6,6 +6,30 @@ from DataRetrieval.BerlinDistrictRetrieval import BerlinDistrictRetrieval
 
 
 class BerlinDistrictRetrievalTests(unittest.TestCase):
+    def test_configured_query_and_district_identifier_are_location_independent(self):
+        retrieval = BerlinDistrictRetrieval(
+            query="configured query", id_tag="ref:district",
+            cache_key="example", cache_datatype="example_v1",
+        )
+        keys = []
+        retrieval.datacache.load_file_from_cache = lambda key: keys.append(key) or {
+            "elements": [{
+                "type": "relation", "id": 3,
+                "tags": {"name": "Example District", "ref:district": "42"},
+                "members": [{
+                    "role": "outer",
+                    "geometry": [{"lon": x, "lat": y}
+                                 for x, y in [(0, 0), (1, 0), (1, 1), (0, 0)]],
+                }],
+            }],
+        }
+
+        districts = retrieval.fetch_districts()
+
+        self.assertEqual(keys, ["example"])
+        self.assertEqual(districts.district_id.tolist(), ["42"])
+        self.assertEqual(retrieval.query, "configured query")
+
     def test_builds_polygon_from_relation_ways_and_excludes_city_relation(self):
         corners = [(0, 0), (1, 0), (1, 1), (0, 1), (0, 0)]
         members = [

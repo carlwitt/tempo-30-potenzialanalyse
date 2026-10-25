@@ -31,6 +31,7 @@ from DataOutput.StreetImageryLinkCreator import StreetImageryLinkCreator
 from DataOutput.ZebraCrossingSimplifier import ZebraCrossingSimplifier
 from DataRetrieval.RoadClassification import RoadClassification
 from PotentialCalculation.AreaScope import AreaScope
+from PotentialCalculation.EntranceEvidence import EntranceEvidence
 
 
 class GeoJsonCreator:
@@ -48,6 +49,7 @@ class GeoJsonCreator:
         clip_long_potentials=True, filter_short_potentials=True,
         simplify_crossings=True, compact_playgrounds=True,
         modern_speed_context=True,
+        prefer_main_entrances=False,
     ):
         export_dir = Path("GEOJSON_EXPORT") / folder_name
         export_dir.mkdir(parents=True, exist_ok=True)
@@ -74,9 +76,25 @@ class GeoJsonCreator:
         for key, data in building_data.items():
             export_data_dict[key] = data.copy()
 
+        analysis_facilities = building_data
+        if prefer_main_entrances:
+            # Candidate lines, their lengths and covered continuations must
+            # use the same entrance reference as the potential decision.
+            # The complete facility exports keep their OSM geometry.
+            analysis_facilities = {}
+            for layer, features in building_data.items():
+                preferred, matched = EntranceEvidence.preferred_geometry(
+                    features, main_entrances_gdf, use_area=layer != "playgrounds",
+                )
+                preferred["street_reference"] = [
+                    "OSM-Haupteingang" if index in matched else "Einrichtungsgeometrie"
+                    for index in preferred.index
+                ]
+                analysis_facilities[layer] = preferred.to_crs(features.crs)
+
         if clip_long_potentials:
             export_data_dict["potential_streets"] = PotentialStreetDisplay.clip_long_ways(
-                export_data_dict["potential_streets"], {"zebra": zebra_gdf, **building_data},
+                export_data_dict["potential_streets"], {"zebra": zebra_gdf, **analysis_facilities},
                 potential_results or {},
             )
 
@@ -96,6 +114,12 @@ class GeoJsonCreator:
             export_data_dict["potential_streets"], gap_result, potential_results or {},
             {"zebra": zebra_gdf, **building_data},
         )
+        potentials = export_data_dict["potential_streets"]
+        potentials["source_osm_ids"] = [[int(osm_id)] for osm_id in potentials["osm_id"]]
+        potentials["logical_segment_length_m"] = potentials.to_crs("EPSG:25832").geometry.length.round(1)
+        potentials["logical_segment_way_count"] = 1
+        potentials["gap_length_with_prerequisites_m"] = None
+        potentials["gap_length_after_m"] = None
         if filter_short_potentials:
             export_data_dict["potential_streets"] = PotentialStreetConsolidation.filter_short_isolated(
                 export_data_dict["potential_streets"]
@@ -108,7 +132,7 @@ class GeoJsonCreator:
             for street_id in ids
         }
         proposals = FacilityStreetSegments.create(
-            streets_w_limit_gdf, building_data, potential_results or {}
+            streets_w_limit_gdf, analysis_facilities, potential_results or {}
         )
         proposals = FacilityStreetSegments.filter_short_isolated(proposals, retained_street_ids)
         export_data_dict["facility_street_segments"] = proposals
@@ -117,7 +141,7 @@ class GeoJsonCreator:
             proposals["facility_layer"], proposals["facility_id"], proposals["street_osm_id"]
         ))
         export_data_dict["facility_covered_street_segments"] = AdjacentCoveredSegments.create(
-            streets_w_limit_gdf, building_data, potential_results or {},
+            streets_w_limit_gdf, analysis_facilities, potential_results or {},
             visible_proposal_pairs=visible_pairs,
         )
 
@@ -138,7 +162,11 @@ class GeoJsonCreator:
         }
 
         export_data_dict["streets_and_limit"]["maxspeed_class"] =  export_data_dict["streets_and_limit"]["maxspeed_class"].replace(mapping)
-        covered = export_data_dict["streets_and_limit"]["maxspeed_class"].map(RoadClassification.is_covered_speed)
+        covered = (
+            export_data_dict["streets_and_limit"]["maxspeed_class"].map(RoadClassification.is_covered_speed)
+            if modern_speed_context else
+            export_data_dict["streets_and_limit"]["maxspeed_class"].isin({"10", "20", "30"})
+        )
         export_data_dict["streets_and_limit"].loc[covered, "maxspeed_class"] = "T30-"
 
         # Override when conditional speed is 30
@@ -149,9 +177,10 @@ class GeoJsonCreator:
         # Munich's published speed layer uses these four legend values.
         # Keep other exact speeds in the description, but do not introduce
         # a new category at the URL consumed by its existing uMap style.
-        known_classes = {"T30-", "T50+", "Conditional-T30", "Keine Daten"}
-        unknown_class = ~export_data_dict["streets_and_limit"]["maxspeed_class"].isin(known_classes)
-        export_data_dict["streets_and_limit"].loc[unknown_class, "maxspeed_class"] = "Keine Daten"
+        if modern_speed_context:
+            known_classes = {"T30-", "T50+", "Conditional-T30", "Keine Daten"}
+            unknown_class = ~export_data_dict["streets_and_limit"]["maxspeed_class"].isin(known_classes)
+            export_data_dict["streets_and_limit"].loc[unknown_class, "maxspeed_class"] = "Keine Daten"
         imagery_streets = export_data_dict["streets_and_limit"]
         if "public_motorcar" in imagery_streets:
             imagery_streets = imagery_streets.loc[imagery_streets["public_motorcar"].eq(True)].copy()

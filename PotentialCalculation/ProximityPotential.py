@@ -7,6 +7,7 @@ proposal and its popup identify the school that supports each segment.
 
 import geopandas as gpd
 
+from PotentialCalculation.EntranceEvidence import EntranceEvidence
 from PotentialCalculation.FacilityStreetRelevance import FacilityStreetRelevance
 from PotentialCalculation.PotentialCalculationResult import PotentialCalculationResult
 
@@ -19,6 +20,10 @@ class ProximityPotential:
         search_distance_m: float = 15.0,
         metric_crs: str = "EPSG:25832",
         public_only: bool = True,
+        allow_addressed_offset: bool = True,
+        main_entrances: gpd.GeoDataFrame | None = None,
+        prefer_main_entrances: bool = False,
+        use_area_entrances: bool = True,
     ) -> PotentialCalculationResult:
         """
         Finds OSM IDs of tempo-50/60 street segments that are within
@@ -44,17 +49,25 @@ class ProximityPotential:
         if tempo50_or_60.crs != metric_crs:
             tempo50_or_60 = tempo50_or_60.to_crs(metric_crs)
 
-        features = features_gdf.copy()
-        if features.crs != metric_crs:
-            features = features.to_crs(metric_crs)
+        if prefer_main_entrances:
+            # A wall-adjacent road must not count when mapped direct access
+            # is on another side of the facility.
+            features, entrance_indices = EntranceEvidence.preferred_geometry(
+                features_gdf, main_entrances, metric_crs, use_area=use_area_entrances,
+            )
+        else:
+            features, entrance_indices = features_gdf.to_crs(metric_crs), set()
 
         # -----------------------------
         # Buffer features
         # -----------------------------
         features_buffered = features.copy()
-        features_buffered["geometry"] = features.geometry.buffer(max(
-            search_distance_m, FacilityStreetRelevance.ADDRESSED_EXTERNAL_POINT_DISTANCE_M,
-        ))
+        buffer_distance = search_distance_m
+        if allow_addressed_offset:
+            buffer_distance = max(
+                buffer_distance, FacilityStreetRelevance.ADDRESSED_EXTERNAL_POINT_DISTANCE_M,
+            )
+        features_buffered["geometry"] = features.geometry.buffer(buffer_distance)
 
         features_buffered = features_buffered[["osm_id", "geometry"]].rename(
             columns={"osm_id": "feature_id"}
@@ -70,14 +83,16 @@ class ProximityPotential:
             predicate="intersects"
         )
 
-        joined = joined.loc[[
-            street.geometry.distance(features.geometry.loc[feature_index])
-            <= FacilityStreetRelevance.search_distance(
-                features.loc[feature_index], street, search_distance_m,
-            )
-            for _, street in joined.iterrows()
-            for feature_index in [street["index_right"]]
-        ]]
+        if allow_addressed_offset:
+            joined = joined.loc[[
+                street.geometry.distance(features.geometry.loc[feature_index])
+                <= (search_distance_m if feature_index in entrance_indices else
+                    FacilityStreetRelevance.search_distance(
+                        features.loc[feature_index], street, search_distance_m,
+                    ))
+                for _, street in joined.iterrows()
+                for feature_index in [street["index_right"]]
+            ]]
 
         # -----------------------------
         # Result

@@ -1,9 +1,8 @@
 """Run the area analysis from source retrieval through GeoJSON export.
 
-For Berlin, a bounding-box query also sees Brandenburg facilities and
-roads. Assign sources to Berlin, search gaps on complete Berlin roads,
-then export clipped geometry. This keeps candidate counts and visible
-gap anchors consistent with the requested city.
+An area's bounding-box query can include neighboring facilities and roads.
+AdditionalFeatures applies configured boundaries to sources and the gap
+network, then the export clips geometry to the same boundary.
 """
 
 import matplotlib.pyplot as plt
@@ -14,7 +13,6 @@ from pathlib import Path
 from DataRetrieval.SegmentRetrieval import SegmentRetrieval
 from DataRetrieval.ZebraCrossingRetrieval import ZebraCrossingRetrieval
 from DataRetrieval.SpecificBuildingRetrieval import SpecificBuildingRetrieval
-from DataRetrieval.BerlinDistrictRetrieval import BerlinDistrictRetrieval
 from DataRetrieval.MainEntranceRetrieval import MainEntranceRetrieval
 from DataRetrieval.AdditionalFeatures import AdditionalFeatures
 
@@ -22,7 +20,6 @@ from PotentialCalculation.ZebraPotential import ZebraPotential
 from PotentialCalculation.ProximityPotential import ProximityPotential
 from PotentialCalculation.FacilityEligibility import FacilityEligibility
 from PotentialCalculation.FacilityStreetRelevance import FacilityStreetRelevance
-from PotentialCalculation.AreaScope import AreaScope
 from PotentialCalculation.GapPotential import Tempo50GapPotential
 from PotentialCalculation.PotentialCalculationResult import PotentialCalculationResult
 
@@ -42,6 +39,10 @@ parser.add_argument("--validate-osm-sources", action="store_true",
                     help="Reject Overpass support nodes and conflicting crossing tags.")
 parser.add_argument("--broaden-facilities", action="store_true",
                     help="Use facility tags and relations beyond the former name filters.")
+parser.add_argument("--additional-features", action="store_true",
+                    help="Apply the area's configured external sources and spatial filters.")
+parser.add_argument("--prefer-main-entrances", action="store_true",
+                    help="Use mapped facility entrances before building geometry for street candidates.")
 parser.add_argument("--near-road-facilities", action="store_true",
                     help="Keep only traffic-adjacent facilities in potential calculations.")
 parser.add_argument("--confirmed-disability-only", action="store_true",
@@ -86,9 +87,13 @@ zebra_retrieval = ZebraCrossingRetrieval(timeout=120)
 zebra_gdf = zebra_retrieval.fetch_zebra_crossings(
     used_bbox, validate_osm_sources=options.validate_osm_sources,
 )
-districts_gdf = BerlinDistrictRetrieval().fetch_districts() if area_under_creation.lower() == "berlin" else None
-if districts_gdf is not None:
-    zebra_gdf = AreaScope.filter_sources(zebra_gdf, districts_gdf)
+districts_gdf = (
+    AdditionalFeatures.load_boundary(area_under_creation)
+    if options.additional_features else None
+)
+zebra_gdf = AdditionalFeatures.filter_sources(zebra_gdf, districts_gdf)
+# Entrance evidence is useful in every export, including imagery links.
+# Only its use for candidate selection is controlled by a workflow flag.
 main_entrances_gdf = MainEntranceRetrieval().fetch_as_geodataframe(used_bbox)
 
 StreetPlot.plot_map(streets_gdf = streets_gdf, zebra_gdf = zebra_gdf)
@@ -163,18 +168,20 @@ if not options.broaden_facilities:
 building_data = SpecificBuildingRetrieval.retrieve_building_data(
     bbox=used_bbox, building_configs=building_configs,
     validate_osm_sources=options.validate_osm_sources,
+    broaden_facilities=options.broaden_facilities,
 )
 kita_before = None
 if "educational_buildings" in building_data:
     education = building_data["educational_buildings"]
     kita_before = education.loc[education["amenity"].eq("kindergarten")].copy()
-    if districts_gdf is not None:
-        kita_before = AreaScope.filter_sources(kita_before, districts_gdf)
-merge_reports = AdditionalFeatures.apply(building_data, area_under_creation, used_bbox)
+    kita_before = AdditionalFeatures.filter_sources(kita_before, districts_gdf)
+merge_reports = (
+    AdditionalFeatures.apply(building_data, area_under_creation, used_bbox)
+    if options.additional_features else []
+)
 traffic_adjacent_buildings = {}
 for key, facilities in building_data.items():
-    if districts_gdf is not None:
-        facilities = AreaScope.filter_sources(facilities, districts_gdf)
+    facilities = AdditionalFeatures.filter_sources(facilities, districts_gdf)
     if key == "disability_facilities":
         # A name like "Werkstatt Inklusion" is only a search hint; preserve
         # the explicit OSM target-group status on the full source layer.
@@ -210,16 +217,16 @@ for key in building_data.keys():
     potential_results[key] = ProximityPotential.find_tempo50_segments_near_features(
         streets_gdf=streets_gdf, features_gdf=eligible, search_distance_m=20,
         public_only=options.public_road_candidates,
+        allow_addressed_offset=options.additional_features,
+        main_entrances=main_entrances_gdf,
+        prefer_main_entrances=options.prefer_main_entrances,
+        use_area_entrances=key != "playgrounds",
     )
 
 print("Identifying Gaps ...")
-# A Brandenburg road may connect to a Berlin gap in the query bbox but
-# disappear from the clipped map. Trace only whole Berlin ways so every
-# accepted anchor and corridor can also be displayed.
-gap_search_streets = (
-    AreaScope.filter_complete_network(streets_gdf, districts_gdf)
-    if districts_gdf is not None else streets_gdf
-)
+# A gap anchor outside the configured boundary would disappear from the
+# clipped map. Keep the analysis network and export boundary consistent.
+gap_search_streets = AdditionalFeatures.filter_network(streets_gdf, districts_gdf)
 potential_results["gap"] = Tempo50GapPotential.find_all_tempo_50_gaps(
     gdf=gap_search_streets, potential_results=potential_results,
     strict_gap_evidence=options.strict_gap_evidence,
@@ -264,12 +271,18 @@ GeoJsonCreator.create_geojson_layer_files(folder_name = area_under_creation, str
                                           filter_short_potentials=options.filter_short_potentials,
                                           simplify_crossings=options.simplify_crossings,
                                           compact_playgrounds=options.compact_playgrounds,
-                                          modern_speed_context=options.public_road_candidates)
+                                          modern_speed_context=options.public_road_candidates,
+                                          prefer_main_entrances=options.prefer_main_entrances)
 
 if merge_reports and kita_before is not None:
-    before_near = FacilityStreetRelevance.filter_near_streets(kita_before, streets_gdf)
+    before_near = (
+        FacilityStreetRelevance.filter_near_streets(kita_before, streets_gdf)
+        if options.near_road_facilities else kita_before
+    )
     before_potential = ProximityPotential.find_tempo50_segments_near_features(
         streets_gdf, before_near, search_distance_m=20,
+        public_only=options.public_road_candidates,
+        allow_addressed_offset=options.additional_features,
     )
     after = traffic_adjacent_buildings["educational_buildings"]
     after = after.loc[after["amenity"].eq("kindergarten")]

@@ -44,6 +44,7 @@ class FacilityStreetSegments:
                 facility_name = facility["name"] if pd.notna(facility["name"]) else "Einrichtung ohne OSM-Namen"
                 speed = street["maxspeed_class"]
                 distance = round(facility.geometry.distance(street.geometry), 1)
+                entrance_reference = facility.get("street_reference") == "OSM-Haupteingang"
                 street_url = f"https://www.openstreetmap.org/way/{street_id}"
                 search_distance = FacilityStreetRelevance.search_distance(facility, street, 20)
                 nearby = street.geometry.intersection(facility.geometry.buffer(search_distance))
@@ -60,11 +61,15 @@ class FacilityStreetSegments:
                         "street_name": name,
                         "current_speed_kmh": int(speed),
                         "distance_m": distance,
+                        "distance_reference": "OSM-Haupteingang" if entrance_reference else None,
+                        "main_entrance_osm_ids": facility.get("main_entrance_osm_ids", []),
                         "street_osm_url": street_url,
                         "description": (
                             f"Tempo-30-Prüfabschnitt (innerhalb {search_distance:g} m der Einrichtung)\n"
                             f"Straße: {name}\nAktuell laut OSM: {speed} km/h\n"
-                            f"Anlass: {facility_name}\nAbstand zur Einrichtung: {distance:.1f} m\n"
+                            f"Anlass: {facility_name}\n"
+                            f"Abstand {'zum OSM-Haupteingang' if entrance_reference else 'zur Einrichtung'}: "
+                            f"{distance:.1f} m\n"
                             f"[[{street_url}|Vollständigen OSM-Abschnitt prüfen]]\n"
                             f"[[{facility_url(facility)}|Einrichtung prüfen]]"
                         ),
@@ -74,7 +79,7 @@ class FacilityStreetSegments:
         columns = [
             "facility_layer", "facility_id", "facility_name", "facility_osm_url",
             "street_osm_id", "street_name", "current_speed_kmh", "distance_m",
-            "street_osm_url", "description", "geometry",
+            "distance_reference", "main_entrance_osm_ids", "street_osm_url", "description", "geometry",
         ]
         result = gpd.GeoDataFrame(records, columns=columns, geometry="geometry", crs="EPSG:25832")
         return result.to_crs(streets.crs)
@@ -167,8 +172,15 @@ class FacilityStreetSegments:
                     )
                     lines.append(
                         f"{facility_label} "
-                        f"({facility['distance_m']:.1f} m)"
+                        f"({facility['distance_m']:.1f} m"
+                        + (" zum OSM-Haupteingang" if facility.get("distance_reference") == "OSM-Haupteingang" else "")
+                        + ")"
                     )
+                    for node_id in facility.get("main_entrance_osm_ids") or []:
+                        lines.append(
+                            f"Zugang prüfen: [[https://www.openstreetmap.org/node/{node_id}|"
+                            f"OSM-Haupteingang {node_id}]]"
+                        )
             descriptions.append("\n\n".join(lines))
         result["description"] = descriptions
         return result

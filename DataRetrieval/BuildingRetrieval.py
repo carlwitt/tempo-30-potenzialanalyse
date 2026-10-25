@@ -32,11 +32,13 @@ class BuildingRetrieval:
         senior_assisted_living_only: bool = False,
         validate_osm_sources: bool = True,
         timeout: int = 60,
+        broaden_facilities: bool = True,
     ):
         self.tags = tags
         self.timeout = timeout
         self.senior_assisted_living_only = senior_assisted_living_only
         self.validate_osm_sources = validate_osm_sources
+        self.broaden_facilities = broaden_facilities
         self.name_filter_regex = (
             re.compile(name_filter_regex, re.IGNORECASE)
             if name_filter_regex
@@ -205,7 +207,7 @@ class BuildingRetrieval:
                     geom = LineString(coords)
 
             elif el["type"] == "relation":
-                if not self.validate_osm_sources:
+                if not self.broaden_facilities:
                     continue
                 geom, relation_node_ids = self._relation_geometry(el, ways, nodes)
                 if geom is None:
@@ -221,7 +223,7 @@ class BuildingRetrieval:
                     group.strip().casefold()
                     for group in re.split(r"[;,]", tags.get("social_facility:for", ""))
                 }
-                if (not self.validate_osm_sources or "disabled" not in target_groups) and (
+                if (not self.broaden_facilities or "disabled" not in target_groups) and (
                     name is None or not self.name_filter_regex.search(name)
                 ):
                     continue
@@ -242,7 +244,10 @@ class BuildingRetrieval:
                 "social_facility_for": tags.get("social_facility:for"),
                 "street": tags.get("addr:street"),
                 "housenumber": tags.get("addr:housenumber"),
-                "website": tags.get("website") or tags.get("contact:website"),
+                "website": (
+                    tags.get("website") or tags.get("contact:website")
+                    if self.broaden_facilities else tags.get("contact:website")
+                ),
                 "operator": tags.get("operator"),
                 "geometry": geom,
             }

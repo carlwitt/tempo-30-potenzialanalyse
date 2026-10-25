@@ -25,6 +25,63 @@ from PotentialCalculation.ProximityPotential import ProximityPotential
 
 
 class AdditionalFeaturesTests(unittest.TestCase):
+    def test_boundary_filter_is_declared_for_any_configured_area(self):
+        config = {
+            "filters": [{
+                "areas": ["Example City"], "type": "osm_boundary",
+                "query": "configured relation query", "id_tag": "ref:district",
+                "cache_datatype": "example_districts_v1",
+            }],
+            "sources": [],
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "additional_features.json"
+            path.write_text(json.dumps(config))
+            with patch("DataRetrieval.AdditionalFeatures.BerlinDistrictRetrieval") as retrieval:
+                expected = gpd.GeoDataFrame(
+                    {"district_id": ["01"], "district_name": ["Center"]},
+                    geometry=[Polygon([(0, 0), (10, 0), (10, 10), (0, 10)])],
+                    crs="EPSG:25832",
+                )
+                retrieval.return_value.fetch_districts.return_value = expected
+                self.assertIs(AdditionalFeatures.load_boundary("EXAMPLE CITY", path), expected)
+                retrieval.assert_called_once_with(
+                    query="configured relation query", id_tag="ref:district",
+                    cache_key="example city", cache_datatype="example_districts_v1",
+                )
+                self.assertIsNone(AdditionalFeatures.load_boundary("Another City", path))
+                self.assertEqual(retrieval.call_count, 1)
+
+    def test_boundary_filters_apply_to_sources_and_complete_network(self):
+        boundary = gpd.GeoDataFrame(
+            {"district_id": ["01"], "district_name": ["Center"]},
+            geometry=[Polygon([(0, 0), (10, 0), (10, 10), (0, 10)])],
+            crs="EPSG:25832",
+        )
+        sources = gpd.GeoDataFrame(
+            {"osm_id": [1, 2]}, geometry=[Point(5, 5), Point(20, 5)], crs=boundary.crs,
+        )
+        streets = gpd.GeoDataFrame(
+            {"osm_id": [3, 4]},
+            geometry=[LineString([(1, 5), (9, 5)]), LineString([(5, 5), (20, 5)])],
+            crs=boundary.crs,
+        )
+        self.assertEqual(AdditionalFeatures.filter_sources(sources, boundary).osm_id.tolist(), [1])
+        self.assertEqual(AdditionalFeatures.filter_network(streets, boundary).osm_id.tolist(), [3])
+        self.assertIs(AdditionalFeatures.filter_sources(sources, None), sources)
+        self.assertIs(AdditionalFeatures.filter_network(streets, None), streets)
+
+    def test_invalid_or_duplicate_boundary_filters_fail_explicitly(self):
+        for filters, message in (
+            ([{"areas": ["Example"], "type": "unknown"}], "Unsupported"),
+            ([{"areas": ["Example"]}, {"areas": ["Example"]}], "Multiple"),
+        ):
+            with self.subTest(filters=filters), tempfile.TemporaryDirectory() as directory:
+                path = Path(directory) / "additional_features.json"
+                path.write_text(json.dumps({"filters": filters, "sources": []}))
+                with self.assertRaisesRegex(ValueError, message):
+                    AdditionalFeatures.load_boundary("Example", path)
+
     @staticmethod
     def osm(names=("Kita Eins",), amenities=None):
         return gpd.GeoDataFrame(
